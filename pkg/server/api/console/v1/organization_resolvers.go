@@ -1191,7 +1191,7 @@ func (r *organizationResolver) ProcessingActivitiesDocument(ctx context.Context,
 }
 
 // RightsRequests is the resolver for the rightsRequests field.
-func (r *organizationResolver) RightsRequests(ctx context.Context, obj *types.Organization, first *int, after *page.CursorKey, last *int, before *page.CursorKey, orderBy *types.RightsRequestOrderBy) (*types.RightsRequestConnection, error) {
+func (r *organizationResolver) RightsRequests(ctx context.Context, obj *types.Organization, first *int, after *page.CursorKey, last *int, before *page.CursorKey, orderBy *types.RightsRequestOrderBy, filter *types.RightsRequestFilter) (*types.RightsRequestConnection, error) {
 	scope, err := r.authorize(ctx, obj.ID, probo.ActionRightsRequestList)
 	if err != nil {
 		return nil, err
@@ -1211,13 +1211,23 @@ func (r *organizationResolver) RightsRequests(ctx context.Context, obj *types.Or
 
 	cursor := types.NewCursor(first, after, last, before, pageOrderBy)
 
-	page, err := r.probo.RightsRequests.ListForOrganizationID(ctx, scope, obj.ID, cursor)
+	rightsRequestFilter := coredata.NewRightsRequestFilter()
+	if filter != nil {
+		rightsRequestFilter = rightsRequestFilter.
+			WithQuery(filter.Query).
+			WithStates(filter.States...).
+			WithTypes(filter.Types...).
+			WithCreatedBetween(filter.CreatedAfter, filter.CreatedBefore).
+			WithDeadlineBetween(filter.DeadlineAfter, filter.DeadlineBefore)
+	}
+
+	page, err := r.probo.RightsRequests.ListForOrganizationID(ctx, scope, obj.ID, cursor, rightsRequestFilter)
 	if err != nil {
 		r.logger.ErrorCtx(ctx, "cannot list organization rights requests", log.Error(err))
 		return nil, gqlutils.Internal(ctx)
 	}
 
-	return types.NewRightsRequestConnection(page, r, obj.ID), nil
+	return types.NewRightsRequestConnection(page, r, obj.ID, rightsRequestFilter), nil
 }
 
 // Risks is the resolver for the risks field.
