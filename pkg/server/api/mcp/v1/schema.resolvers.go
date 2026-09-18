@@ -5024,7 +5024,7 @@ func (r *Resolver) ListRightsRequestsTool(ctx context.Context, req *mcp.CallTool
 
 	cursor := types.NewCursor(input.Size, input.Cursor, pageOrderBy)
 
-	page, err := prb.RightsRequests.ListForOrganizationID(ctx, scope, input.OrganizationID, cursor)
+	page, err := prb.RightsRequests.ListForOrganizationID(ctx, scope, input.OrganizationID, cursor, coredata.NewRightsRequestFilter())
 	if err != nil {
 		panic(fmt.Errorf("cannot list organization rights requests: %w", err))
 	}

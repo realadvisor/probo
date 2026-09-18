@@ -2425,11 +2425,13 @@
     "title": "Rights Requests",
     "description": "Manage data subject rights requests.",
     "actions": { "add": "Add rights request", "loading": "Loading...", "loadMore": "Load more", "delete": "Delete" },
-    "columns": { "type": "Type", "state": "State", "dataSubject": "Data Subject", "contact": "Contact", "deadline": "Deadline", "actions": "Actions" },
+    "columns": { "type": "Type", "state": "State", "dataSubject": "Data Subject", "contact": "Contact", "deadline": "Deadline", "createdAt": "Created", "actions": "Actions" },
     "types": { "access": "Access", "deletion": "Deletion", "rectification": "Rectification", "portability": "Portability", "objection": "Objection", "complaint": "Complaint" },
     "states": { "todo": "To Do", "in_progress": "In Progress", "done": "Done", "rejected": "Rejected" },
     "empty": { "title": "No rights requests yet", "description": "Create your first rights request to get started." },
     "deleteConfirmation": "This will permanently delete the rights request. This action cannot be undone.",
+    "filters": {"searchPlaceholder": "Search by data subject, contact or details...", "allStates": "All states", "allTypes": "All types", "all": "All", "clear": "Clear filters", "noMatch": "No rights requests match the current filters.", "dateField": "Date field", "dateCreated": "Created", "dateDeadline": "Deadline", "dateFrom": "From", "dateTo": "to"},
+    "pagination": {"showing": "Showing {{from}}–{{to}} of {{total}}", "pageSize": "Per page", "page": "Page {{page}} of {{pages}}", "previous": "Previous", "next": "Next"},
     "noDeadline": "No deadline"
   },
   "createRightsRequestDialog": {

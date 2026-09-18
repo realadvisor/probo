@@ -4354,6 +4354,7 @@
       "dataSubject": "Betrokkene",
       "contact": "Contactpersoon",
       "deadline": "Deadline",
+      "createdAt": "Aangemaakt",
       "actions": "Acties"
     },
     "types": {
@@ -4375,6 +4376,26 @@
       "description": "Maak uw eerste rechtenverzoek aan om te beginnen."
     },
     "deleteConfirmation": "Hiermee wordt het rechtenverzoek permanent verwijderd. Deze actie kan niet ongedaan worden gemaakt.",
+    "filters": {
+      "searchPlaceholder": "Zoeken op betrokkene, contact of details...",
+      "allStates": "Alle statussen",
+      "allTypes": "Alle types",
+      "all": "Alle",
+      "clear": "Filters wissen",
+      "noMatch": "Geen rechtenverzoeken komen overeen met de huidige filters.",
+      "dateField": "Datumveld",
+      "dateCreated": "Aangemaakt",
+      "dateDeadline": "Deadline",
+      "dateFrom": "Van",
+      "dateTo": "tot"
+    },
+    "pagination": {
+      "showing": "{{from}}–{{to}} van {{total}}",
+      "pageSize": "Per pagina",
+      "page": "Pagina {{page}} van {{pages}}",
+      "previous": "Vorige",
+      "next": "Volgende"
+    },
     "noDeadline": "Geen deadline"
   },
   "createRightsRequestDialog": {

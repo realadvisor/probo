@@ -318,6 +318,7 @@ type Organization implements Node {
         last: Int
         before: CursorKey
         orderBy: RightsRequestOrder
+        filter: RightsRequestFilter
     ): RightsRequestConnection! @goField(forceResolver: true)
 
     risks(

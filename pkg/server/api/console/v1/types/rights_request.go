@@ -36,6 +36,7 @@ type (
 
 		Resolver any
 		ParentID gid.GID
+		Filters  *coredata.RightsRequestFilter
 	}
 )
 
@@ -43,6 +44,7 @@ func NewRightsRequestConnection(
 	p *page.Page[*coredata.RightsRequest, coredata.RightsRequestOrderField],
 	parentType any,
 	parentID gid.GID,
+	filters *coredata.RightsRequestFilter,
 ) *RightsRequestConnection {
 	edges := make([]*RightsRequestEdge, len(p.Data))
 	for i, request := range p.Data {
@@ -55,6 +57,7 @@ func NewRightsRequestConnection(
 
 		Resolver: parentType,
 		ParentID: parentID,
+		Filters:  filters,
 	}
 }
 

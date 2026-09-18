@@ -4364,6 +4364,7 @@
       "dataSubject": "Personne concernée",
       "contact": "Contact",
       "deadline": "Échéance",
+      "createdAt": "Créée le",
       "actions": "Actions"
     },
     "types": {
@@ -4385,6 +4386,26 @@
       "description": "Créez votre première demande d’exercice de droits pour commencer."
     },
     "deleteConfirmation": "Cela supprimera définitivement la demande d’exercice de droits. Cette action est irréversible.",
+    "filters": {
+      "searchPlaceholder": "Rechercher par personne concernée, contact ou détails...",
+      "allStates": "Tous les états",
+      "allTypes": "Tous les types",
+      "all": "Tous",
+      "clear": "Effacer les filtres",
+      "noMatch": "Aucune demande ne correspond aux filtres actuels.",
+      "dateField": "Champ de date",
+      "dateCreated": "Créée le",
+      "dateDeadline": "Échéance",
+      "dateFrom": "Du",
+      "dateTo": "au"
+    },
+    "pagination": {
+      "showing": "{{from}}–{{to}} sur {{total}}",
+      "pageSize": "Par page",
+      "page": "Page {{page}} sur {{pages}}",
+      "previous": "Précédent",
+      "next": "Suivant"
+    },
     "noDeadline": "Aucune échéance"
   },
   "createRightsRequestDialog": {
