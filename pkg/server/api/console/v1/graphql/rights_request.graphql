@@ -70,6 +70,25 @@ input RightsRequestOrder
     field: RightsRequestOrderField!
 }
 
+input RightsRequestFilter {
+    query: String
+    states: [RightsRequestState!]
+    types: [RightsRequestType!]
+    "Inclusive lower bound on createdAt."
+    createdAfter: Datetime
+    "Inclusive upper bound on createdAt."
+    createdBefore: Datetime
+    "Inclusive lower bound on deadline, compared on the UTC calendar day."
+    deadlineAfter: Datetime
+    "Inclusive upper bound on deadline, compared on the UTC calendar day."
+    deadlineBefore: Datetime
+}
+
+type RightsRequestStateCount {
+    state: RightsRequestState!
+    count: Int!
+}
+
 type RightsRequest implements Node {
     id: ID!
     organization: Organization! @goField(forceResolver: true)
@@ -91,6 +110,8 @@ type RightsRequestConnection
         model: "go.probo.inc/probo/pkg/server/api/console/v1/types.RightsRequestConnection"
     ) {
     totalCount: Int! @goField(forceResolver: true)
+    "Matches per state for the connection's filter, ignoring its states restriction."
+    stateCounts: [RightsRequestStateCount!]! @goField(forceResolver: true)
     edges: [RightsRequestEdge!]!
     pageInfo: PageInfo!
 }

@@ -165,6 +165,7 @@ func (rrs *RightsRequests) CountByOrganizationID(
 	conn pg.Querier,
 	scope Scoper,
 	organizationID gid.GID,
+	filter *RightsRequestFilter,
 ) (int, error) {
 	q := `
 SELECT
@@ -174,12 +175,14 @@ FROM
 WHERE
 	%s
 	AND organization_id = @organization_id
+	AND %s
 `
 
-	q = fmt.Sprintf(q, scope.SQLFragment())
+	q = fmt.Sprintf(q, scope.SQLFragment(), filter.SQLFragment())
 
 	args := pgx.StrictNamedArgs{"organization_id": organizationID}
 	maps.Copy(args, scope.SQLArguments())
+	maps.Copy(args, filter.SQLArguments())
 
 	row := conn.QueryRow(ctx, q, args)
 
@@ -193,12 +196,71 @@ WHERE
 	return count, nil
 }
 
+// CountByOrganizationIDAndState counts the requests matching the filter,
+// grouped by state. States without a match are absent from the map.
+func (rrs *RightsRequests) CountByOrganizationIDAndState(
+	ctx context.Context,
+	conn pg.Querier,
+	scope Scoper,
+	organizationID gid.GID,
+	filter *RightsRequestFilter,
+) (map[RightsRequestState]int, error) {
+	q := `
+SELECT
+	request_state,
+	COUNT(id)
+FROM
+	rights_requests
+WHERE
+	%s
+	AND organization_id = @organization_id
+	AND %s
+GROUP BY
+	request_state
+`
+
+	q = fmt.Sprintf(q, scope.SQLFragment(), filter.SQLFragment())
+
+	args := pgx.StrictNamedArgs{"organization_id": organizationID}
+	maps.Copy(args, scope.SQLArguments())
+	maps.Copy(args, filter.SQLArguments())
+
+	rows, err := conn.Query(ctx, q, args)
+	if err != nil {
+		return nil, fmt.Errorf("cannot count rights requests by state: %w", err)
+	}
+
+	defer rows.Close()
+
+	counts := make(map[RightsRequestState]int)
+
+	for rows.Next() {
+		var (
+			state RightsRequestState
+			count int
+		)
+
+		if err := rows.Scan(&state, &count); err != nil {
+			return nil, fmt.Errorf("cannot scan rights request state count: %w", err)
+		}
+
+		counts[state] = count
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("cannot iterate rights request state counts: %w", err)
+	}
+
+	return counts, nil
+}
+
 func (rrs *RightsRequests) LoadByOrganizationID(
 	ctx context.Context,
 	conn pg.Querier,
 	scope Scoper,
 	organizationID gid.GID,
 	cursor *page.Cursor[RightsRequestOrderField],
+	filter *RightsRequestFilter,
 ) error {
 	q := `
 SELECT
@@ -220,12 +282,14 @@ WHERE
 	%s
 	AND organization_id = @organization_id
 	AND %s
+	AND %s
 `
 
-	q = fmt.Sprintf(q, scope.SQLFragment(), cursor.SQLFragment())
+	q = fmt.Sprintf(q, scope.SQLFragment(), filter.SQLFragment(), cursor.SQLFragment())
 
 	args := pgx.StrictNamedArgs{"organization_id": organizationID}
 	maps.Copy(args, scope.SQLArguments())
+	maps.Copy(args, filter.SQLArguments())
 	maps.Copy(args, cursor.SQLArguments())
 
 	rows, err := conn.Query(ctx, q, args)

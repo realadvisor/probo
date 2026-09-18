@@ -69,5 +69,16 @@ func (v *RightsRequestOrderField) UnmarshalText(text []byte) error {
 }
 
 func (p RightsRequestOrderField) Column() string {
-	return string(p)
+	switch p {
+	case RightsRequestOrderFieldCreatedAt:
+		return "created_at"
+	case RightsRequestOrderFieldDeadline:
+		return "deadline"
+	case RightsRequestOrderFieldState:
+		return "request_state"
+	case RightsRequestOrderFieldType:
+		return "request_type"
+	}
+
+	panic(fmt.Sprintf("unsupported order by: %s", p))
 }
