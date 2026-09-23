@@ -23,6 +23,7 @@ package console_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -310,6 +311,203 @@ func TestRightsRequest_List(t *testing.T) {
 	}, &result)
 	require.NoError(t, err)
 	assert.GreaterOrEqual(t, result.Node.RightsRequests.TotalCount, 3)
+}
+
+func TestRightsRequest_ListFilter(t *testing.T) {
+	t.Parallel()
+	owner := testutil.NewClient(t, testutil.RoleOwner)
+
+	createQuery := `
+		mutation CreateRightsRequest($input: CreateRightsRequestInput!) {
+			createRightsRequest(input: $input) {
+				rightsRequestEdge {
+					node {
+						id
+					}
+				}
+			}
+		}
+	`
+
+	// A unique marker keeps this test isolated from requests created by
+	// parallel tests in the same organization.
+	marker := fmt.Sprintf("filter-%d", time.Now().UnixNano())
+
+	fixtures := []struct {
+		requestType  string
+		requestState string
+		dataSubject  string
+		contact      string
+		deadline     string
+	}{
+		{"ACCESS", "TODO", "Alice " + marker, "alice@example.com", "2030-01-10T00:00:00Z"},
+		{"DELETION", "IN_PROGRESS", "Bob " + marker, "bob@example.com", "2030-02-20T00:00:00Z"},
+		{"ACCESS", "DONE", "Carol " + marker, "carol@example.com", "2030-03-30T00:00:00Z"},
+	}
+
+	for _, fixture := range fixtures {
+		_, err := owner.Do(createQuery, map[string]any{
+			"input": map[string]any{
+				"organizationId": owner.GetOrganizationID().String(),
+				"requestType":    fixture.requestType,
+				"requestState":   fixture.requestState,
+				"dataSubject":    fixture.dataSubject,
+				"contact":        fixture.contact,
+				"deadline":       fixture.deadline,
+			},
+		})
+		require.NoError(t, err)
+	}
+
+	query := `
+		query GetRightsRequests($id: ID!, $filter: RightsRequestFilter) {
+			node(id: $id) {
+				... on Organization {
+					rightsRequests(first: 50, filter: $filter) {
+						edges {
+							node {
+								requestType
+								requestState
+								dataSubject
+							}
+						}
+						totalCount
+						stateCounts {
+							state
+							count
+						}
+					}
+				}
+			}
+		}
+	`
+
+	type stateCount struct {
+		State string `json:"state"`
+		Count int    `json:"count"`
+	}
+
+	var lastStateCounts []stateCount
+
+	list := func(t *testing.T, filter map[string]any) (int, []string) {
+		t.Helper()
+
+		var result struct {
+			Node struct {
+				RightsRequests struct {
+					Edges []struct {
+						Node struct {
+							DataSubject string `json:"dataSubject"`
+						} `json:"node"`
+					} `json:"edges"`
+					TotalCount  int          `json:"totalCount"`
+					StateCounts []stateCount `json:"stateCounts"`
+				} `json:"rightsRequests"`
+			} `json:"node"`
+		}
+
+		err := owner.Execute(query, map[string]any{
+			"id":     owner.GetOrganizationID().String(),
+			"filter": filter,
+		}, &result)
+		require.NoError(t, err)
+
+		subjects := make([]string, 0, len(result.Node.RightsRequests.Edges))
+		for _, edge := range result.Node.RightsRequests.Edges {
+			subjects = append(subjects, edge.Node.DataSubject)
+		}
+
+		lastStateCounts = result.Node.RightsRequests.StateCounts
+
+		return result.Node.RightsRequests.TotalCount, subjects
+	}
+
+	t.Run("query matches data subject case-insensitively", func(t *testing.T) {
+		total, subjects := list(t, map[string]any{"query": "alice " + marker})
+		assert.Equal(t, 1, total)
+		assert.Equal(t, []string{"Alice " + marker}, subjects)
+	})
+
+	t.Run("query matches contact", func(t *testing.T) {
+		total, subjects := list(t, map[string]any{"query": "bob@example"})
+		assert.Equal(t, 1, total)
+		assert.Equal(t, []string{"Bob " + marker}, subjects)
+	})
+
+	t.Run("query escapes LIKE wildcards", func(t *testing.T) {
+		total, subjects := list(t, map[string]any{"query": "%" + marker})
+		assert.Equal(t, 0, total)
+		assert.Empty(t, subjects)
+	})
+
+	t.Run("states filter", func(t *testing.T) {
+		total, subjects := list(t, map[string]any{
+			"query":  marker,
+			"states": []string{"TODO", "DONE"},
+		})
+		assert.Equal(t, 2, total)
+		assert.ElementsMatch(t, []string{"Alice " + marker, "Carol " + marker}, subjects)
+	})
+
+	t.Run("types filter", func(t *testing.T) {
+		total, subjects := list(t, map[string]any{
+			"query": marker,
+			"types": []string{"DELETION"},
+		})
+		assert.Equal(t, 1, total)
+		assert.Equal(t, []string{"Bob " + marker}, subjects)
+	})
+
+	t.Run("combined filters", func(t *testing.T) {
+		total, subjects := list(t, map[string]any{
+			"query":  marker,
+			"states": []string{"TODO", "IN_PROGRESS"},
+			"types":  []string{"ACCESS"},
+		})
+		assert.Equal(t, 1, total)
+		assert.Equal(t, []string{"Alice " + marker}, subjects)
+	})
+
+	t.Run("empty filter returns everything", func(t *testing.T) {
+		total, subjects := list(t, map[string]any{"query": marker})
+		assert.Equal(t, 3, total)
+		assert.Len(t, subjects, 3)
+	})
+
+	t.Run("state counts ignore the states restriction", func(t *testing.T) {
+		total, _ := list(t, map[string]any{"query": marker, "states": []string{"DONE"}})
+		assert.Equal(t, 1, total)
+		assert.ElementsMatch(t, []stateCount{
+			{"TODO", 1}, {"IN_PROGRESS", 1}, {"DONE", 1}, {"REJECTED", 0},
+		}, lastStateCounts)
+	})
+
+	t.Run("deadline range is inclusive on UTC days", func(t *testing.T) {
+		total, subjects := list(t, map[string]any{
+			"query":          marker,
+			"deadlineAfter":  "2030-02-20T00:00:00Z",
+			"deadlineBefore": "2030-03-30T00:00:00Z",
+		})
+		assert.Equal(t, 2, total)
+		assert.ElementsMatch(t, []string{"Bob " + marker, "Carol " + marker}, subjects)
+	})
+
+	t.Run("created range", func(t *testing.T) {
+		now := time.Now().UTC()
+		total, _ := list(t, map[string]any{
+			"query":         marker,
+			"createdAfter":  now.Add(-time.Hour).Format(time.RFC3339),
+			"createdBefore": now.Add(time.Hour).Format(time.RFC3339),
+		})
+		assert.Equal(t, 3, total)
+
+		total, subjects := list(t, map[string]any{
+			"query":         marker,
+			"createdBefore": now.Add(-time.Hour).Format(time.RFC3339),
+		})
+		assert.Equal(t, 0, total)
+		assert.Empty(t, subjects)
+	})
 }
 
 func TestRightsRequest_TypeAndStateValues(t *testing.T) {

@@ -53,12 +53,14 @@ interface CreateRightsRequestDialogProps {
   children: ReactNode;
   organizationId: string;
   connectionId?: string;
+  onCreated?: () => void;
 }
 
 export function CreateRightsRequestDialog({
   children,
   organizationId,
   connectionId,
+  onCreated,
 }: CreateRightsRequestDialogProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -102,6 +104,7 @@ export function CreateRightsRequestDialog({
 
       reset();
       dialogRef.current?.close();
+      onCreated?.();
     } catch (error) {
       toast({
         title: t("createRightsRequestDialog.messages.error"),

@@ -145,7 +145,12 @@ func (r *rightsRequestConnectionResolver) TotalCount(ctx context.Context, obj *t
 
 	switch obj.Resolver.(type) {
 	case *organizationResolver:
-		count, err := r.probo.RightsRequests.CountByOrganizationID(ctx, scope, obj.ParentID)
+		filter := obj.Filters
+		if filter == nil {
+			filter = coredata.NewRightsRequestFilter()
+		}
+
+		count, err := r.probo.RightsRequests.CountByOrganizationID(ctx, scope, obj.ParentID, filter)
 		if err != nil {
 			r.logger.ErrorCtx(ctx, "cannot count rights requests", log.Error(err))
 			return 0, gqlutils.Internal(ctx)
@@ -155,6 +160,43 @@ func (r *rightsRequestConnectionResolver) TotalCount(ctx context.Context, obj *t
 	default:
 		r.logger.ErrorCtx(ctx, "unsupported resolver type for RightsRequestConnection")
 		return 0, gqlutils.Internal(ctx)
+	}
+}
+
+// StateCounts is the resolver for the stateCounts field.
+func (r *rightsRequestConnectionResolver) StateCounts(ctx context.Context, obj *types.RightsRequestConnection) ([]*types.RightsRequestStateCount, error) {
+	scope, err := r.authorize(ctx, obj.ParentID, probo.ActionRightsRequestList)
+	if err != nil {
+		return nil, err
+	}
+
+	filter := obj.Filters
+	if filter == nil {
+		filter = coredata.NewRightsRequestFilter()
+	}
+
+	switch obj.Resolver.(type) {
+	case *organizationResolver:
+		counts, err := r.probo.RightsRequests.CountByStateForOrganizationID(ctx, scope, obj.ParentID, filter.WithoutStates())
+		if err != nil {
+			r.logger.ErrorCtx(ctx, "cannot count rights requests by state", log.Error(err))
+			return nil, gqlutils.Internal(ctx)
+		}
+
+		states := coredata.RightsRequestStates()
+		result := make([]*types.RightsRequestStateCount, 0, len(states))
+
+		for _, state := range states {
+			result = append(result, &types.RightsRequestStateCount{
+				State: state,
+				Count: counts[state],
+			})
+		}
+
+		return result, nil
+	default:
+		r.logger.ErrorCtx(ctx, "unsupported resolver type for RightsRequestConnection")
+		return nil, gqlutils.Internal(ctx)
 	}
 }
 

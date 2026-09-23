@@ -282,6 +282,7 @@ func (s *RightsRequestService) Delete(
 func (s RightsRequestService) CountByOrganizationID(
 	ctx context.Context, scope coredata.Scoper,
 	organizationID gid.GID,
+	filter *coredata.RightsRequestFilter,
 ) (int, error) {
 	var count int
 
@@ -290,7 +291,7 @@ func (s RightsRequestService) CountByOrganizationID(
 		func(ctx context.Context, conn pg.Querier) (err error) {
 			requests := coredata.RightsRequests{}
 
-			count, err = requests.CountByOrganizationID(ctx, conn, scope, organizationID)
+			count, err = requests.CountByOrganizationID(ctx, conn, scope, organizationID, filter)
 			if err != nil {
 				return fmt.Errorf("cannot count rights requests: %w", err)
 			}
@@ -305,17 +306,45 @@ func (s RightsRequestService) CountByOrganizationID(
 	return count, nil
 }
 
+func (s RightsRequestService) CountByStateForOrganizationID(
+	ctx context.Context, scope coredata.Scoper,
+	organizationID gid.GID,
+	filter *coredata.RightsRequestFilter,
+) (map[coredata.RightsRequestState]int, error) {
+	var counts map[coredata.RightsRequestState]int
+
+	err := s.svc.pg.WithConn(
+		ctx,
+		func(ctx context.Context, conn pg.Querier) (err error) {
+			requests := coredata.RightsRequests{}
+
+			counts, err = requests.CountByOrganizationIDAndState(ctx, conn, scope, organizationID, filter)
+			if err != nil {
+				return fmt.Errorf("cannot count rights requests by state: %w", err)
+			}
+
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return counts, nil
+}
+
 func (s RightsRequestService) ListForOrganizationID(
 	ctx context.Context, scope coredata.Scoper,
 	organizationID gid.GID,
 	cursor *page.Cursor[coredata.RightsRequestOrderField],
+	filter *coredata.RightsRequestFilter,
 ) (*page.Page[*coredata.RightsRequest, coredata.RightsRequestOrderField], error) {
 	var requests coredata.RightsRequests
 
 	err := s.svc.pg.WithConn(
 		ctx,
 		func(ctx context.Context, conn pg.Querier) error {
-			err := requests.LoadByOrganizationID(ctx, conn, scope, organizationID, cursor)
+			err := requests.LoadByOrganizationID(ctx, conn, scope, organizationID, cursor, filter)
 			if err != nil {
 				return fmt.Errorf("cannot load rights requests: %w", err)
 			}
