@@ -1,0 +1,70 @@
+name: realadvisor-ci
+
+# Checks for the RealAdvisor fork branch. Upstream's own "make" workflow only
+# targets main and needs its private runners, so it never runs here.
+
+on:
+  pull_request:
+    branches: [realadvisor]
+  push:
+    branches: [realadvisor]
+  workflow_dispatch:
+
+concurrency:
+  group: realadvisor-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: install JS dependencies
+        run: |
+          npm install -g npm@^12.0.2
+          npm ci
+
+      - name: relay and type checks
+        run: |
+          make relay
+          for app in console compliance-portal employee-portal; do
+            npm --workspace "@probo/${app}" run check
+          done
+
+      - name: go generate, build and vet
+        run: |
+          # go:embed needs the frontend dist folders to exist; placeholders are
+          # enough for compiling and vetting.
+          for d in apps/console/dist apps/compliance-portal/dist apps/employee-portal/dist packages/emails/dist; do
+            mkdir -p "$d" && touch "$d/index.html"
+          done
+          go mod download
+          go generate ./pkg/server/api/connect/v1
+          go generate ./pkg/server/api/mcp/v1
+          go generate ./pkg/server/api/console/v1
+          go generate ./pkg/server/api/complianceportal/v1
+          go build ./pkg/... ./cmd/probod ./cmd/probod-bootstrap
+          go vet ./pkg/... ./e2e/...
+          test -z "$(gofmt -l pkg cmd e2e)" || { gofmt -l pkg cmd e2e; echo "gofmt: files above need formatting" >&2; exit 1; }
+
+      - name: lint changed frontend files
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth 1 origin "${{ github.base_ref }}"
+          files=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- 'apps/**/*.ts' 'apps/**/*.tsx' 'packages/**/*.ts' 'packages/**/*.tsx' | grep -v __generated__ || true)
+          [ -z "$files" ] || npx eslint $files
