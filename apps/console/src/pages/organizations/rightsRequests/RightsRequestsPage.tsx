@@ -542,95 +542,95 @@ export default function RightsRequestsPage({
                 ))}
               </Tabs>
 
-              <Card>
-                <div className={isPending || isLoadingNext ? "opacity-50 pointer-events-none transition-opacity" : ""}>
-                  <SortableTable
-                    refetch={refetchWithOrder}
-                    initialOrder={DEFAULT_ORDER}
+              <div className={isPending || isLoadingNext ? "opacity-50 pointer-events-none transition-opacity" : ""}>
+                <SortableTable
+                  refetch={refetchWithOrder}
+                  initialOrder={DEFAULT_ORDER}
+                >
+                  <Thead>
+                    <Tr>
+                      <SortableTh field="TYPE">{t("rightsRequestsPage.columns.type")}</SortableTh>
+                      <SortableTh field="STATE">{t("rightsRequestsPage.columns.state")}</SortableTh>
+                      <Th>{t("rightsRequestsPage.columns.dataSubject")}</Th>
+                      <Th>{t("rightsRequestsPage.columns.contact")}</Th>
+                      {/* Not sortable: deadline is nullable and the shared cursor cannot page past a NULL boundary row. */}
+                      <Th>{t("rightsRequestsPage.columns.deadline")}</Th>
+                      <SortableTh field="CREATED_AT">{t("rightsRequestsPage.columns.createdAt")}</SortableTh>
+                      {hasAnyAction && <Th>{t("rightsRequestsPage.columns.actions")}</Th>}
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {requests.length === 0
+                      ? (
+                          <Tr>
+                            <Td
+                              colSpan={columnCount}
+                              className="text-center text-txt-secondary"
+                            >
+                              {t("rightsRequestsPage.filters.noMatch")}
+                            </Td>
+                          </Tr>
+                        )
+                      : (
+                          requests.map(request => (
+                            <RequestRow
+                              key={request.id}
+                              request={request}
+                              connectionId={connectionId}
+                              hasAnyAction={hasAnyAction}
+                              onDeleted={refreshAfterMutation}
+                            />
+                          ))
+                        )}
+                  </Tbody>
+                </SortableTable>
+              </div>
+
+              {/* Table renders its own Card, so the pager sits below it like SortableTable's own "show more" row. */}
+              <div className="flex flex-wrap items-center gap-4 text-sm text-txt-secondary">
+                <span>
+                  {t("rightsRequestsPage.pagination.showing", {
+                    from: totalCount === 0 ? 0 : pageStart + 1,
+                    to: Math.min(pageStart + requests.length, totalCount),
+                    total: totalCount,
+                  })}
+                </span>
+                <div className="ml-auto flex items-center gap-2">
+                  <span>{t("rightsRequestsPage.pagination.pageSize")}</span>
+                  <Select
+                    variant="editor"
+                    value={String(pageSize)}
+                    onValueChange={handlePageSizeChange}
+                    aria-label={t("rightsRequestsPage.pagination.pageSize")}
                   >
-                    <Thead>
-                      <Tr>
-                        <SortableTh field="TYPE">{t("rightsRequestsPage.columns.type")}</SortableTh>
-                        <SortableTh field="STATE">{t("rightsRequestsPage.columns.state")}</SortableTh>
-                        <Th>{t("rightsRequestsPage.columns.dataSubject")}</Th>
-                        <Th>{t("rightsRequestsPage.columns.contact")}</Th>
-                        {/* Not sortable: deadline is nullable and the shared cursor cannot page past a NULL boundary row. */}
-                        <Th>{t("rightsRequestsPage.columns.deadline")}</Th>
-                        <SortableTh field="CREATED_AT">{t("rightsRequestsPage.columns.createdAt")}</SortableTh>
-                        {hasAnyAction && <Th>{t("rightsRequestsPage.columns.actions")}</Th>}
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {requests.length === 0
-                        ? (
-                            <Tr>
-                              <Td
-                                colSpan={columnCount}
-                                className="text-center text-txt-secondary"
-                              >
-                                {t("rightsRequestsPage.filters.noMatch")}
-                              </Td>
-                            </Tr>
-                          )
-                        : (
-                            requests.map(request => (
-                              <RequestRow
-                                key={request.id}
-                                request={request}
-                                connectionId={connectionId}
-                                hasAnyAction={hasAnyAction}
-                                onDeleted={refreshAfterMutation}
-                              />
-                            ))
-                          )}
-                    </Tbody>
-                  </SortableTable>
-                </div>
-                <div className="p-4 border-t flex flex-wrap items-center gap-4 text-sm text-txt-secondary">
+                    {PAGE_SIZES.map(size => (
+                      <Option key={size} value={String(size)}>{size}</Option>
+                    ))}
+                  </Select>
                   <span>
-                    {t("rightsRequestsPage.pagination.showing", {
-                      from: totalCount === 0 ? 0 : pageStart + 1,
-                      to: Math.min(pageStart + requests.length, totalCount),
-                      total: totalCount,
+                    {t("rightsRequestsPage.pagination.page", {
+                      page: pageIndex + 1,
+                      pages: pageCount,
                     })}
                   </span>
-                  <div className="ml-auto flex items-center gap-2">
-                    <span>{t("rightsRequestsPage.pagination.pageSize")}</span>
-                    <Select
-                      variant="editor"
-                      value={String(pageSize)}
-                      onValueChange={handlePageSizeChange}
-                      aria-label={t("rightsRequestsPage.pagination.pageSize")}
-                    >
-                      {PAGE_SIZES.map(size => (
-                        <Option key={size} value={String(size)}>{size}</Option>
-                      ))}
-                    </Select>
-                    <span>
-                      {t("rightsRequestsPage.pagination.page", {
-                        page: pageIndex + 1,
-                        pages: pageCount,
-                      })}
-                    </span>
-                    <Button
-                      variant="tertiary"
-                      icon={IconChevronLeft}
-                      disabled={!hasPreviousPage || isLoadingNext}
-                      onClick={() => setPageIndex(pageIndex - 1)}
-                    >
-                      {t("rightsRequestsPage.pagination.previous")}
-                    </Button>
-                    <Button
-                      variant="tertiary"
-                      icon={IconChevronRight}
-                      disabled={!hasNextPage || isLoadingNext}
-                      onClick={handleNextPage}
-                    >
-                      {t("rightsRequestsPage.pagination.next")}
-                    </Button>
-                  </div>
+                  <Button
+                    variant="tertiary"
+                    icon={IconChevronLeft}
+                    disabled={!hasPreviousPage || isLoadingNext}
+                    onClick={() => setPageIndex(pageIndex - 1)}
+                  >
+                    {t("rightsRequestsPage.pagination.previous")}
+                  </Button>
+                  <Button
+                    variant="tertiary"
+                    icon={IconChevronRight}
+                    disabled={!hasNextPage || isLoadingNext}
+                    onClick={handleNextPage}
+                  >
+                    {t("rightsRequestsPage.pagination.next")}
+                  </Button>
                 </div>
-              </Card>
+              </div>
             </div>
           )}
     </div>
