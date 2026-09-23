@@ -1,0 +1,82 @@
+name: realadvisor-upstream
+
+# Weekly: rebase the realadvisor branch onto the newest upstream probod
+# release. A clean rebase is pushed (force-with-lease) and an image build is
+# dispatched; a conflict opens an issue with the commands to resolve it.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+concurrency: realadvisor-upstream
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: realadvisor
+          fetch-depth: 0
+
+      - name: resolve newest upstream release
+        id: latest
+        run: |
+          git remote add upstream https://github.com/getprobo/probo.git
+          git fetch --quiet upstream 'refs/tags/probod/v*:refs/tags/probod/v*'
+          latest=$(git tag --list 'probod/v*' | sed 's#probod/v##' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          current="$(cat cmd/probod/VERSION)"
+          echo "current=${current}" >> "$GITHUB_OUTPUT"
+          echo "latest=${latest}" >> "$GITHUB_OUTPUT"
+          echo "probod/v${current} -> probod/v${latest}"
+
+      - name: rebase onto the new release
+        id: rebase
+        if: steps.latest.outputs.latest != steps.latest.outputs.current
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rebase --onto "probod/v${{ steps.latest.outputs.latest }}" "probod/v${{ steps.latest.outputs.current }}" realadvisor
+          git log --oneline "probod/v${{ steps.latest.outputs.latest }}..HEAD"
+
+      - name: push branch and tag
+        if: steps.rebase.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push origin "refs/tags/probod/v${{ steps.latest.outputs.latest }}"
+          git push --force-with-lease=realadvisor origin realadvisor
+          # Pushes made with GITHUB_TOKEN do not trigger workflows: dispatch explicitly.
+          gh workflow run realadvisor-ci.yml --ref realadvisor
+          gh workflow run realadvisor-image.yml --ref realadvisor
+
+      - name: open an issue on conflict
+        if: steps.rebase.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LATEST: ${{ steps.latest.outputs.latest }}
+          CURRENT: ${{ steps.latest.outputs.current }}
+        run: |
+          title="Rebase realadvisor onto probod/v${LATEST} needs manual conflict resolution"
+          existing=$(gh issue list --search "\"${title}\" in:title" --state open --json number --jq '.[0].number')
+          [ -n "$existing" ] && { echo "issue #$existing already open"; exit 0; }
+          {
+            echo "The weekly rebase of \`realadvisor\` from \`probod/v${CURRENT}\` onto \`probod/v${LATEST}\` hit conflicts. Resolve locally:"
+            echo
+            echo '```bash'
+            echo "git fetch origin && git fetch https://github.com/getprobo/probo.git refs/tags/probod/v${LATEST}:refs/tags/probod/v${LATEST}"
+            echo "git checkout realadvisor && git rebase --onto probod/v${LATEST} probod/v${CURRENT}"
+            echo "# fix conflicts, git add, git rebase --continue"
+            echo "git push origin refs/tags/probod/v${LATEST} && git push --force-with-lease origin realadvisor"
+            echo '```'
+            echo
+            echo "See contrib/realadvisor/README.md."
+          } > body.md
+          gh issue create --title "$title" --body-file body.md
