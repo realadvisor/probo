@@ -53,9 +53,11 @@ jobs:
         run: |
           git push origin "refs/tags/probod/v${{ steps.latest.outputs.latest }}"
           git push --force-with-lease=realadvisor origin realadvisor
-          # Pushes made with GITHUB_TOKEN do not trigger workflows: dispatch explicitly.
-          gh workflow run realadvisor-ci.yml --ref realadvisor
-          gh workflow run realadvisor-image.yml --ref realadvisor
+          # Pushes made with GITHUB_TOKEN do not trigger workflows: dispatch
+          # explicitly. --repo is required: gh would otherwise resolve the
+          # "upstream" remote added above and target getprobo/probo.
+          gh workflow run realadvisor-ci.yml --repo "${{ github.repository }}" --ref realadvisor
+          gh workflow run realadvisor-image.yml --repo "${{ github.repository }}" --ref realadvisor
 
       - name: open an issue on conflict
         if: steps.rebase.outcome == 'failure'
@@ -65,7 +67,7 @@ jobs:
           CURRENT: ${{ steps.latest.outputs.current }}
         run: |
           title="Rebase realadvisor onto probod/v${LATEST} needs manual conflict resolution"
-          existing=$(gh issue list --search "\"${title}\" in:title" --state open --json number --jq '.[0].number')
+          existing=$(gh issue list --repo "${{ github.repository }}" --search "\"${title}\" in:title" --state open --json number --jq '.[0].number')
           [ -n "$existing" ] && { echo "issue #$existing already open"; exit 0; }
           {
             echo "The weekly rebase of \`realadvisor\` from \`probod/v${CURRENT}\` onto \`probod/v${LATEST}\` hit conflicts. Resolve locally:"
@@ -79,4 +81,4 @@ jobs:
             echo
             echo "See contrib/realadvisor/README.md."
           } > body.md
-          gh issue create --title "$title" --body-file body.md
+          gh issue create --repo "${{ github.repository }}" --title "$title" --body-file body.md
