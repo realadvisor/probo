@@ -64,6 +64,7 @@ import {
   useUpdateRightsRequest,
 } from "../../../hooks/graph/RightsRequestGraph";
 
+import { markdownHardBreaks } from "./_lib/markdownHardBreaks";
 import { canApprovePlan, parsePlan, stripPlanLines } from "./_lib/rightsRequestPlan";
 
 const updateRequestSchema = z.object({
@@ -461,7 +462,7 @@ function MarkdownField({
                 : (
                     <div className="prose prose-sm max-w-none [&_.prose]:max-w-none">
                       <Markdown
-                        content={rendered}
+                        content={markdownHardBreaks(rendered)}
                         allowedImageOrigins={consoleMarkdownImageOrigins()}
                       />
                     </div>
