@@ -32,6 +32,8 @@ import {
   Card,
   DropdownItem,
   Field,
+  IconCircleCheck1,
+  IconWarning,
   Input,
   Label,
   Option,
@@ -39,6 +41,7 @@ import {
   Textarea,
 } from "@probo/ui";
 import useToast from "@probo/ui/src/v2/Toaster/useToast";
+import { useState } from "react";
 import { Controller } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import {
@@ -58,6 +61,8 @@ import {
   useDeleteRightsRequest,
   useUpdateRightsRequest,
 } from "../../../hooks/graph/RightsRequestGraph";
+
+import { canApprovePlan, parsePlan } from "./_lib/rightsRequestPlan";
 
 const updateRequestSchema = z.object({
   requestType: z.enum(["ACCESS", "DELETION", "RECTIFICATION", "PORTABILITY", "OBJECTION", "COMPLAINT"]),
@@ -95,7 +100,7 @@ export default function RightsRequestDetailsPage(props: Props) {
     connectionId,
   );
 
-  const { register, handleSubmit, formState, control } = useFormWithSchema(
+  const { register, handleSubmit, formState, control, setValue } = useFormWithSchema(
     updateRequestSchema,
     {
       defaultValues: {
@@ -139,6 +144,39 @@ export default function RightsRequestDetailsPage(props: Props) {
       });
     }
   });
+
+  // The plan is read from the stored actionTaken, not the textarea draft, so
+  // editing the text does not make the Approve button flicker.
+  const plan = parsePlan(request.actionTaken);
+  const [isApproving, setIsApproving] = useState(false);
+  const canApprove
+    = request.canUpdate && canApprovePlan(request.requestState ?? "TODO", plan);
+
+  // Approve only moves the state to IN_PROGRESS; other unsaved edits in the
+  // form are left alone and still need an explicit save.
+  const handleApprove = async () => {
+    setIsApproving(true);
+    try {
+      await updateRequest({ id: request.id!, requestState: "IN_PROGRESS" });
+      setValue("requestState", "IN_PROGRESS");
+      toast.add({
+        title: t("rightsRequestDetailsPage.messages.success"),
+        description: t("rightsRequestDetailsPage.plan.approved"),
+        type: "success",
+      });
+    } catch (error) {
+      toast.add({
+        title: t("rightsRequestDetailsPage.messages.error"),
+        description: formatError(
+          t("rightsRequestDetailsPage.errors.update"),
+          error as GraphQLError,
+        ),
+        type: "error",
+      });
+    } finally {
+      setIsApproving(false);
+    }
+  };
 
   const typeOptions = ["ACCESS", "DELETION", "RECTIFICATION", "PORTABILITY", "OBJECTION", "COMPLAINT"] as const;
   const stateOptions = ["TODO", "IN_PROGRESS", "DONE", "REJECTED"] as const;
@@ -287,6 +325,59 @@ export default function RightsRequestDetailsPage(props: Props) {
                 )}
               </div>
             </div>
+
+            {plan && (
+              <div className="rounded-lg border border-border-low bg-subtle p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">
+                        {t("rightsRequestDetailsPage.plan.title")}
+                      </span>
+                      {plan.needsHuman && (
+                        <Badge variant="warning">
+                          <IconWarning size={12} />
+                          {t("rightsRequestDetailsPage.plan.needsHuman")}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-txt-secondary">{plan.summary}</p>
+                  </div>
+                  {canApprove && (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      icon={IconCircleCheck1}
+                      disabled={isApproving || formState.isSubmitting}
+                      onClick={() => void handleApprove()}
+                    >
+                      {isApproving
+                        ? t("rightsRequestDetailsPage.plan.approving")
+                        : t("rightsRequestDetailsPage.plan.approve")}
+                    </Button>
+                  )}
+                </div>
+                {plan.steps.length > 0 && (
+                  <ul className="space-y-1 text-sm">
+                    {plan.steps.map((step, index) => (
+                      <li key={index} className="flex gap-2">
+                        <span className="shrink-0 font-medium">{step.system}</span>
+                        <span className="text-txt-tertiary">—</span>
+                        <span className="text-txt-secondary">{step.action}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {plan.note && (
+                  <p className="text-sm text-txt-warning">{plan.note}</p>
+                )}
+                {canApprove && formState.isDirty && (
+                  <p className="text-xs text-txt-tertiary">
+                    {t("rightsRequestDetailsPage.plan.approveHint")}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div>
               <Label>{t("rightsRequestDetailsPage.fields.actionTaken")}</Label>

@@ -4387,6 +4387,14 @@
       "delete": "Verwijderen",
       "saving": "Opslaan...",
       "save": "Wijzigingen opslaan"
+    },
+    "plan": {
+      "title": "Plan",
+      "needsHuman": "Controle nodig",
+      "approve": "Goedkeuren",
+      "approving": "Goedkeuren...",
+      "approved": "Plan goedgekeurd: het verzoek is nu In behandeling",
+      "approveHint": "Goedkeuren wijzigt alleen de status; niet-opgeslagen wijzigingen hierboven moeten nog worden opgeslagen."
     }
   },
   "rightsRequestsPage": {
@@ -4402,6 +4410,7 @@
       "type": "Type",
       "state": "Status",
       "dataSubject": "Betrokkene",
+      "plan": "Plan",
       "contact": "Contactpersoon",
       "deadline": "Deadline",
       "createdAt": "Aangemaakt",
@@ -4445,6 +4454,24 @@
       "page": "Pagina {{page}} van {{pages}}",
       "previous": "Vorige",
       "next": "Volgende"
+    },
+    "plan": {
+      "needsHuman": "Controle nodig",
+      "none": "Geen plan"
+    },
+    "approve": {
+      "selected_one": "{{count}} geselecteerd",
+      "selected_other": "{{count}} geselecteerd",
+      "clear": "Wissen",
+      "approving": "Goedkeuren...",
+      "approveSelected": "Selectie goedkeuren ({{count}})",
+      "selectAll": "Alle goed te keuren verzoeken op deze pagina selecteren",
+      "select": "Selecteren voor goedkeuring",
+      "successTitle": "Goedgekeurd",
+      "success_one": "{{count}} verzoek naar In behandeling verplaatst",
+      "success_other": "{{count}} verzoeken naar In behandeling verplaatst",
+      "errorTitle": "Sommige goedkeuringen zijn mislukt",
+      "partial": "{{approved}} goedgekeurd, {{failed}} mislukt"
     },
     "noDeadline": "Geen deadline"
   },
