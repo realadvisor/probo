@@ -4402,6 +4402,19 @@
       "delete": "Supprimer",
       "saving": "Enregistrement...",
       "save": "Enregistrer les modifications"
+    },
+    "plan": {
+      "title": "Plan",
+      "needsHuman": "À vérifier",
+      "approve": "Approuver",
+      "approving": "Approbation...",
+      "approved": "Plan approuvé : la demande est maintenant en cours",
+      "approveHint": "Approuver ne change que l’état ; les modifications non enregistrées ci-dessus doivent encore être sauvegardées."
+    },
+    "markdown": {
+      "edit": "Modifier",
+      "preview": "Aperçu",
+      "empty": "Rien pour le moment. Cliquez sur Modifier pour ajouter du texte (Markdown pris en charge)."
     }
   },
   "rightsRequestsPage": {
@@ -4417,6 +4430,7 @@
       "type": "Type",
       "state": "État",
       "dataSubject": "Personne concernée",
+      "plan": "Plan",
       "contact": "Contact",
       "deadline": "Échéance",
       "createdAt": "Créée le",
@@ -4460,6 +4474,24 @@
       "page": "Page {{page}} sur {{pages}}",
       "previous": "Précédent",
       "next": "Suivant"
+    },
+    "plan": {
+      "needsHuman": "À vérifier",
+      "none": "Aucun plan"
+    },
+    "approve": {
+      "selected_one": "{{count}} sélectionnée",
+      "selected_other": "{{count}} sélectionnées",
+      "clear": "Effacer",
+      "approving": "Approbation...",
+      "approveSelected": "Approuver la sélection ({{count}})",
+      "selectAll": "Sélectionner toutes les demandes approuvables de cette page",
+      "select": "Sélectionner pour approbation",
+      "successTitle": "Approuvé",
+      "success_one": "{{count}} demande passée en cours",
+      "success_other": "{{count}} demandes passées en cours",
+      "errorTitle": "Certaines approbations ont échoué",
+      "partial": "{{approved}} approuvée(s), {{failed}} en échec"
     },
     "noDeadline": "Aucune échéance"
   },

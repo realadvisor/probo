@@ -29,15 +29,18 @@ import {
   Badge,
   Button,
   Card,
+  Checkbox,
   Dropdown,
   DropdownCheckboxItem,
   DropdownItem,
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
+  IconCircleCheck1,
   IconMagnifyingGlass,
   IconPlusLarge,
   IconTrashCan,
+  IconWarning,
   Input,
   Option,
   PageHeader,
@@ -52,6 +55,7 @@ import {
   Tr,
   useConfirm,
 } from "@probo/ui";
+import useToast from "@probo/ui/src/v2/Toaster/useToast";
 import type { ComponentProps } from "react";
 import { useCallback, useState, useTransition } from "react";
 import { useTranslation } from "react-i18next";
@@ -66,6 +70,7 @@ import { useDebounceCallback } from "usehooks-ts";
 
 import type { RightsRequestGraphDeleteMutation } from "#/__generated__/core/RightsRequestGraphDeleteMutation.graphql";
 import type { RightsRequestGraphListQuery } from "#/__generated__/core/RightsRequestGraphListQuery.graphql";
+import type { RightsRequestGraphUpdateMutation } from "#/__generated__/core/RightsRequestGraphUpdateMutation.graphql";
 import type {
   RightsRequestsPageFragment$data,
   RightsRequestsPageFragment$key,
@@ -84,8 +89,10 @@ import type { NodeOf } from "#/types";
 import {
   deleteRightsRequestMutation,
   rightsRequestsQuery,
+  updateRightsRequestMutation,
 } from "../../../hooks/graph/RightsRequestGraph";
 
+import { canApprovePlan, parsePlan, type Plan } from "./_lib/rightsRequestPlan";
 import { CreateRightsRequestDialog } from "./dialogs/CreateRightsRequestDialog";
 
 interface RightsRequestsPageProps {
@@ -95,6 +102,9 @@ interface RightsRequestsPageProps {
 const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZES = [10, 25, 50, 100];
 const SEARCH_DEBOUNCE_MS = 300;
+// Approvals are plain updates fired one request at a time per lane; a few
+// lanes keep a bulk approval quick without flooding the API.
+const APPROVE_CONCURRENCY = 4;
 
 const REQUEST_STATES: RightsRequestState[] = [
   "TODO",
@@ -175,6 +185,7 @@ const rightsRequestsPageFragment = graphql`
                     contact
                     deadline
                     createdAt
+                    actionTaken
 
                     canDelete: permission(action: "core:rights-request:delete")
                     canUpdate: permission(action: "core:rights-request:update")
@@ -238,6 +249,10 @@ export default function RightsRequestsPage({
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [requestedPageIndex, setPageIndex] = useState(0);
   const [isPending, startTransition] = useTransition();
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const [isApproving, setIsApproving] = useState(false);
+  const [approveRequest] = useMutation<RightsRequestGraphUpdateMutation>(updateRightsRequestMutation);
+  const toast = useToast();
 
   const connectionId = data?.rightsRequests?.__id ?? "";
   const loadedRequests
@@ -276,10 +291,25 @@ export default function RightsRequestsPage({
     ({ canUpdate, canDelete }) => canUpdate || canDelete,
   );
 
+  // Plans are parsed once per render for the page; a row is selectable when
+  // its plan can be approved as-is and the viewer may update it.
+  const plans = new Map(
+    requests.map(request => [request.id, parsePlan(request.actionTaken)] as const),
+  );
+  const isSelectable = (request: (typeof requests)[number]) =>
+    request.canUpdate && canApprovePlan(request.requestState, plans.get(request.id) ?? null);
+  const selectableIds = requests.filter(isSelectable).map(({ id }) => id);
+  const canSelect = requests.some(({ canUpdate }) => canUpdate);
+  // Only ids still on the page and still approvable count: a reload or an
+  // approval can leave stale ids in the set.
+  const selectedOnPage = selectableIds.filter(id => selectedIds.has(id));
+  const allSelected = selectableIds.length > 0 && selectedOnPage.length === selectableIds.length;
+
   // Every list reload goes through here: it replaces the store connection
   // with `first` rows from the server under the given filter and order.
   const reload = useCallback(
     (nextFilter: RequestsFilter, nextOrder: Order, first: number) => {
+      setSelectedIds(new Set());
       startTransition(() => {
         refetch(
           {
@@ -378,6 +408,77 @@ export default function RightsRequestsPage({
     });
   };
 
+  const toggleSelected = (id: string, checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      for (const id of selectableIds) {
+        if (checked) {
+          next.add(id);
+        } else {
+          next.delete(id);
+        }
+      }
+      return next;
+    });
+  };
+
+  // Approving means moving the request to IN_PROGRESS: the backend webhooks
+  // take it from there. Each id is its own mutation so one failure does not
+  // block the rest; the toast reports both counts.
+  const handleApproveSelected = async () => {
+    const ids = [...selectedOnPage];
+    if (ids.length === 0 || isApproving) {
+      return;
+    }
+    setIsApproving(true);
+    let approved = 0;
+    let failed = 0;
+    const queue = [...ids];
+    const lane = async () => {
+      for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+        try {
+          await promisifyMutation(approveRequest)({
+            variables: { input: { id, requestState: "IN_PROGRESS" } },
+          });
+          approved += 1;
+        } catch {
+          failed += 1;
+        }
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(APPROVE_CONCURRENCY, ids.length) }, lane),
+    );
+    setIsApproving(false);
+    setSelectedIds(new Set());
+    if (failed === 0) {
+      toast.add({
+        title: t("rightsRequestsPage.approve.successTitle"),
+        description: t("rightsRequestsPage.approve.success", { count: approved }),
+        type: "success",
+      });
+    } else {
+      toast.add({
+        title: t("rightsRequestsPage.approve.errorTitle"),
+        description: t("rightsRequestsPage.approve.partial", { approved, failed }),
+        type: "error",
+      });
+    }
+    refreshAfterMutation();
+  };
+
   const refetchWithOrder: ComponentProps<typeof SortableTable>["refetch"] = ({
     order: nextOrder,
   }) => {
@@ -408,7 +509,7 @@ export default function RightsRequestsPage({
     : filter.types.map(typeLabel).join(", ");
 
   const showEmptyState = loadedRequests.length === 0 && !hasActiveFilter;
-  const columnCount = hasAnyAction ? 7 : 6;
+  const columnCount = 7 + (canSelect ? 1 : 0) + (hasAnyAction ? 1 : 0);
 
   return (
     <div className="space-y-6">
@@ -542,16 +643,54 @@ export default function RightsRequestsPage({
                 ))}
               </Tabs>
 
-              <div className={isPending || isLoadingNext ? "opacity-50 pointer-events-none transition-opacity" : ""}>
+              {selectedOnPage.length > 0 && (
+                <div className="flex items-center gap-3 rounded-lg border border-border-low bg-subtle px-4 py-2 text-sm">
+                  <span className="text-txt-secondary">
+                    {t("rightsRequestsPage.approve.selected", { count: selectedOnPage.length })}
+                  </span>
+                  <div className="ml-auto flex items-center gap-2">
+                    <Button
+                      variant="tertiary"
+                      disabled={isApproving}
+                      onClick={() => setSelectedIds(new Set())}
+                    >
+                      {t("rightsRequestsPage.approve.clear")}
+                    </Button>
+                    <Button
+                      variant="primary"
+                      icon={IconCircleCheck1}
+                      disabled={isApproving}
+                      onClick={() => void handleApproveSelected()}
+                    >
+                      {isApproving
+                        ? t("rightsRequestsPage.approve.approving")
+                        : t("rightsRequestsPage.approve.approveSelected", { count: selectedOnPage.length })}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className={isPending || isLoadingNext || isApproving ? "opacity-50 pointer-events-none transition-opacity" : ""}>
                 <SortableTable
                   refetch={refetchWithOrder}
                   initialOrder={DEFAULT_ORDER}
                 >
                   <Thead>
                     <Tr>
+                      {canSelect && (
+                        <Th width={40}>
+                          <Checkbox
+                            checked={allSelected}
+                            disabled={selectableIds.length === 0}
+                            onChange={toggleSelectAll}
+                            aria-label={t("rightsRequestsPage.approve.selectAll")}
+                          />
+                        </Th>
+                      )}
                       <SortableTh field="TYPE">{t("rightsRequestsPage.columns.type")}</SortableTh>
                       <SortableTh field="STATE">{t("rightsRequestsPage.columns.state")}</SortableTh>
                       <Th>{t("rightsRequestsPage.columns.dataSubject")}</Th>
+                      <Th>{t("rightsRequestsPage.columns.plan")}</Th>
                       <Th>{t("rightsRequestsPage.columns.contact")}</Th>
                       {/* Not sortable: deadline is nullable and the shared cursor cannot page past a NULL boundary row. */}
                       <Th>{t("rightsRequestsPage.columns.deadline")}</Th>
@@ -576,8 +715,13 @@ export default function RightsRequestsPage({
                             <RequestRow
                               key={request.id}
                               request={request}
+                              plan={plans.get(request.id) ?? null}
                               connectionId={connectionId}
                               hasAnyAction={hasAnyAction}
+                              selectable={isSelectable(request)}
+                              selected={selectedIds.has(request.id)}
+                              showCheckbox={canSelect}
+                              onSelectedChange={checked => toggleSelected(request.id, checked)}
                               onDeleted={refreshAfterMutation}
                             />
                           ))
@@ -639,15 +783,25 @@ export default function RightsRequestsPage({
 
 function RequestRow({
   request,
+  plan,
   connectionId,
   hasAnyAction,
+  selectable,
+  selected,
+  showCheckbox,
+  onSelectedChange,
   onDeleted,
 }: {
   request: NodeOf<
     NonNullable<RightsRequestsPageFragment$data["rightsRequests"]>
   >;
+  plan: Plan | null;
   connectionId: string;
   hasAnyAction: boolean;
+  selectable: boolean;
+  selected: boolean;
+  showCheckbox: boolean;
+  onSelectedChange: (checked: boolean) => void;
   onDeleted: () => void;
 }) {
   const organizationId = useOrganizationId();
@@ -678,6 +832,16 @@ function RequestRow({
 
   return (
     <Tr to={detailsUrl}>
+      {showCheckbox && (
+        <Td noLink width={40}>
+          <Checkbox
+            checked={selected && selectable}
+            disabled={!selectable}
+            onChange={onSelectedChange}
+            aria-label={t("rightsRequestsPage.approve.select")}
+          />
+        </Td>
+      )}
       <Td>
         <Badge variant="neutral">
           {t(`rightsRequestsPage.types.${request.requestType.toLowerCase()}`)}
@@ -691,6 +855,27 @@ function RequestRow({
         </Badge>
       </Td>
       <Td>{request.dataSubject || "-"}</Td>
+      <Td className="max-w-80">
+        {plan
+          ? (
+              <div className="flex items-center gap-2 min-w-0">
+                {plan.needsHuman && (
+                  <Badge variant="warning" className="shrink-0">
+                    <IconWarning size={12} />
+                    {t("rightsRequestsPage.plan.needsHuman")}
+                  </Badge>
+                )}
+                <span className="truncate" title={plan.summary}>
+                  {plan.summary}
+                </span>
+              </div>
+            )
+          : (
+              <span className="text-txt-tertiary">
+                {t("rightsRequestsPage.plan.none")}
+              </span>
+            )}
+      </Td>
       <Td>{request.contact || "-"}</Td>
       <Td>
         {request.deadline

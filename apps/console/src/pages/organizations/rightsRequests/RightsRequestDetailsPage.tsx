@@ -32,14 +32,18 @@ import {
   Card,
   DropdownItem,
   Field,
+  IconCircleCheck1,
+  IconWarning,
   Input,
   Label,
+  Markdown,
   Option,
   Select,
   Textarea,
 } from "@probo/ui";
 import useToast from "@probo/ui/src/v2/Toaster/useToast";
-import { Controller } from "react-hook-form";
+import { type ReactNode, useState } from "react";
+import { Controller, type UseFormRegisterReturn } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import {
   ConnectionHandler,
@@ -50,6 +54,7 @@ import {
 import type { RightsRequestGraphNodeQuery } from "#/__generated__/core/RightsRequestGraphNodeQuery.graphql";
 import { useFormWithSchema } from "#/hooks/useFormWithSchema";
 import { useOrganizationId } from "#/hooks/useOrganizationId";
+import { consoleMarkdownImageOrigins } from "#/lib/markdownImageOrigins";
 import { z } from "#/lib/zod";
 
 import {
@@ -58,6 +63,9 @@ import {
   useDeleteRightsRequest,
   useUpdateRightsRequest,
 } from "../../../hooks/graph/RightsRequestGraph";
+
+import { markdownHardBreaks } from "./_lib/markdownHardBreaks";
+import { canApprovePlan, parsePlan, stripPlanLines } from "./_lib/rightsRequestPlan";
 
 const updateRequestSchema = z.object({
   requestType: z.enum(["ACCESS", "DELETION", "RECTIFICATION", "PORTABILITY", "OBJECTION", "COMPLAINT"]),
@@ -95,7 +103,7 @@ export default function RightsRequestDetailsPage(props: Props) {
     connectionId,
   );
 
-  const { register, handleSubmit, formState, control } = useFormWithSchema(
+  const { register, handleSubmit, formState, control, setValue, watch } = useFormWithSchema(
     updateRequestSchema,
     {
       defaultValues: {
@@ -139,6 +147,42 @@ export default function RightsRequestDetailsPage(props: Props) {
       });
     }
   });
+
+  // The plan is read from the stored actionTaken, not the textarea draft, so
+  // editing the text does not make the Approve button flicker.
+  const plan = parsePlan(request.actionTaken);
+  const [isApproving, setIsApproving] = useState(false);
+  const canApprove
+    = request.canUpdate && canApprovePlan(request.requestState ?? "TODO", plan);
+
+  // Approve only moves the state to IN_PROGRESS; other unsaved edits in the
+  // form are left alone and still need an explicit save.
+  const handleApprove = async () => {
+    setIsApproving(true);
+    try {
+      await updateRequest({ id: request.id!, requestState: "IN_PROGRESS" });
+      setValue("requestState", "IN_PROGRESS");
+      toast.add({
+        title: t("rightsRequestDetailsPage.messages.success"),
+        description: t("rightsRequestDetailsPage.plan.approved"),
+        type: "success",
+      });
+    } catch (error) {
+      toast.add({
+        title: t("rightsRequestDetailsPage.messages.error"),
+        description: formatError(
+          t("rightsRequestDetailsPage.errors.update"),
+          error as GraphQLError,
+        ),
+        type: "error",
+      });
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const detailsDraft = watch("details") ?? "";
+  const actionTakenDraft = watch("actionTaken") ?? "";
 
   const typeOptions = ["ACCESS", "DELETION", "RECTIFICATION", "PORTABILITY", "OBJECTION", "COMPLAINT"] as const;
   const stateOptions = ["TODO", "IN_PROGRESS", "DONE", "REJECTED"] as const;
@@ -262,19 +306,13 @@ export default function RightsRequestDetailsPage(props: Props) {
               error={formState.errors.contact?.message}
             />
 
-            <div>
-              <Label>{t("rightsRequestDetailsPage.fields.details")}</Label>
-              <Textarea
-                {...register("details")}
-                placeholder={t("rightsRequestDetailsPage.placeholders.details")}
-                rows={3}
-              />
-              {formState.errors.details?.message && (
-                <div className="text-red-500 text-sm mt-1">
-                  {formState.errors.details.message}
-                </div>
-              )}
-            </div>
+            <MarkdownField
+              label={t("rightsRequestDetailsPage.fields.details")}
+              rendered={detailsDraft}
+              registration={register("details")}
+              placeholder={t("rightsRequestDetailsPage.placeholders.details")}
+              error={formState.errors.details?.message}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -288,19 +326,73 @@ export default function RightsRequestDetailsPage(props: Props) {
               </div>
             </div>
 
-            <div>
-              <Label>{t("rightsRequestDetailsPage.fields.actionTaken")}</Label>
-              <Textarea
-                {...register("actionTaken")}
-                placeholder={t("rightsRequestDetailsPage.placeholders.actionTaken")}
-                rows={3}
-              />
-              {formState.errors.actionTaken?.message && (
-                <div className="text-red-500 text-sm mt-1">
-                  {formState.errors.actionTaken.message}
+            {plan && (
+              <div className="rounded-lg border border-border-low bg-subtle p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">
+                        {t("rightsRequestDetailsPage.plan.title")}
+                      </span>
+                      {plan.needsHuman && (
+                        <Badge variant="warning">
+                          <IconWarning size={12} />
+                          {t("rightsRequestDetailsPage.plan.needsHuman")}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-txt-secondary">{plan.summary}</p>
+                  </div>
+                  {canApprove && (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      icon={IconCircleCheck1}
+                      disabled={isApproving || formState.isSubmitting}
+                      onClick={() => void handleApprove()}
+                    >
+                      {isApproving
+                        ? t("rightsRequestDetailsPage.plan.approving")
+                        : t("rightsRequestDetailsPage.plan.approve")}
+                    </Button>
+                  )}
                 </div>
-              )}
-            </div>
+                {plan.steps.length > 0 && (
+                  <ul className="space-y-1 text-sm">
+                    {plan.steps.map((step, index) => (
+                      <li key={index} className="flex gap-2">
+                        <span className="shrink-0 font-medium">{step.system}</span>
+                        <span className="text-txt-tertiary">—</span>
+                        <span className="text-txt-secondary">{step.action}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {plan.note && (
+                  <div className="text-sm text-txt-warning prose prose-sm max-w-none [&_.prose]:max-w-none [&_.prose]:text-inherit">
+                    <Markdown
+                      content={plan.note}
+                      allowedImageOrigins={consoleMarkdownImageOrigins()}
+                    />
+                  </div>
+                )}
+                {canApprove && formState.isDirty && (
+                  <p className="text-xs text-txt-tertiary">
+                    {t("rightsRequestDetailsPage.plan.approveHint")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* The PLAN line is hidden from the rendered view (the card above
+                shows it) but stays in the textarea and in what gets saved. */}
+            <MarkdownField
+              label={t("rightsRequestDetailsPage.fields.actionTaken")}
+              rendered={stripPlanLines(actionTakenDraft)}
+              registration={register("actionTaken")}
+              placeholder={t("rightsRequestDetailsPage.placeholders.actionTaken")}
+              error={formState.errors.actionTaken?.message}
+            />
 
             <div className="flex justify-end pt-4">
               {request.canUpdate && (
@@ -318,6 +410,66 @@ export default function RightsRequestDetailsPage(props: Props) {
           </form>
         </div>
       </Card>
+    </div>
+  );
+}
+
+// A textarea with a rendered Markdown view. View mode is the default; the
+// textarea only mounts in edit mode but the field stays registered through
+// react-hook-form, so saving is unchanged.
+function MarkdownField({
+  label,
+  rendered,
+  registration,
+  placeholder,
+  error,
+}: {
+  label: ReactNode;
+  rendered: string;
+  registration: UseFormRegisterReturn;
+  placeholder: string;
+  error?: string;
+}) {
+  const { t } = useTranslation();
+  const [isEditing, setIsEditing] = useState(false);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <Label>{label}</Label>
+        <Button
+          type="button"
+          variant="tertiary"
+          onClick={() => setIsEditing(editing => !editing)}
+        >
+          {isEditing
+            ? t("rightsRequestDetailsPage.markdown.preview")
+            : t("rightsRequestDetailsPage.markdown.edit")}
+        </Button>
+      </div>
+      {isEditing
+        ? (
+            <Textarea {...registration} placeholder={placeholder} rows={6} />
+          )
+        : (
+            <div className="rounded-lg border border-border-low px-3 py-2 text-sm min-h-10">
+              {rendered.trim() === ""
+                ? (
+                    <span className="text-txt-tertiary">
+                      {t("rightsRequestDetailsPage.markdown.empty")}
+                    </span>
+                  )
+                : (
+                    <div className="prose prose-sm max-w-none [&_.prose]:max-w-none">
+                      <Markdown
+                        content={markdownHardBreaks(rendered)}
+                        allowedImageOrigins={consoleMarkdownImageOrigins()}
+                      />
+                    </div>
+                  )}
+            </div>
+          )}
+      {error && <div className="text-red-500 text-sm mt-1">{error}</div>}
     </div>
   );
 }

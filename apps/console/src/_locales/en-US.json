@@ -2501,13 +2501,17 @@
     "states": { "todo": "To Do", "in_progress": "In Progress", "done": "Done", "rejected": "Rejected" },
     "fields": { "requestType": "Request Type", "state": "State", "dataSubject": "Data Subject", "contact": "Contact", "details": "Details", "deadline": "Deadline", "actionTaken": "Action Taken" },
     "placeholders": { "details": "Enter request details", "actionTaken": "Enter action taken" },
-    "actions": { "delete": "Delete", "saving": "Saving...", "save": "Save Changes" }
+    "actions": { "delete": "Delete", "saving": "Saving...", "save": "Save Changes" },
+    "plan": {"title": "Plan", "needsHuman": "Needs a look", "approve": "Approve", "approving": "Approving...", "approved": "Plan approved: the request is now In Progress", "approveHint": "Approve only changes the state; unsaved edits above still need Save Changes."},
+    "markdown": {"edit": "Edit", "preview": "Preview", "empty": "Nothing yet. Click Edit to add text (Markdown supported)."}
   },
   "rightsRequestsPage": {
     "title": "Rights Requests",
     "description": "Manage data subject rights requests.",
     "actions": { "add": "Add rights request", "loading": "Loading...", "loadMore": "Load more", "delete": "Delete" },
-    "columns": { "type": "Type", "state": "State", "dataSubject": "Data Subject", "contact": "Contact", "deadline": "Deadline", "createdAt": "Created", "actions": "Actions" },
+    "columns": { "type": "Type", "state": "State", "dataSubject": "Data Subject", "plan": "Plan", "contact": "Contact", "deadline": "Deadline", "createdAt": "Created", "actions": "Actions" },
+    "plan": {"needsHuman": "Needs a look", "none": "No plan"},
+    "approve": {"selected_one": "{{count}} selected", "selected_other": "{{count}} selected", "clear": "Clear", "approving": "Approving...", "approveSelected": "Approve selected ({{count}})", "selectAll": "Select all approvable requests on this page", "select": "Select for approval", "successTitle": "Approved", "success_one": "{{count}} request moved to In Progress", "success_other": "{{count}} requests moved to In Progress", "errorTitle": "Some approvals failed", "partial": "{{approved}} approved, {{failed}} failed"},
     "types": { "access": "Access", "deletion": "Deletion", "rectification": "Rectification", "portability": "Portability", "objection": "Objection", "complaint": "Complaint" },
     "states": { "todo": "To Do", "in_progress": "In Progress", "done": "Done", "rejected": "Rejected" },
     "empty": { "title": "No rights requests yet", "description": "Create your first rights request to get started." },
