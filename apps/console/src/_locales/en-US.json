@@ -2502,7 +2502,8 @@
     "fields": { "requestType": "Request Type", "state": "State", "dataSubject": "Data Subject", "contact": "Contact", "details": "Details", "deadline": "Deadline", "actionTaken": "Action Taken" },
     "placeholders": { "details": "Enter request details", "actionTaken": "Enter action taken" },
     "actions": { "delete": "Delete", "saving": "Saving...", "save": "Save Changes" },
-    "plan": {"title": "Plan", "needsHuman": "Needs a look", "approve": "Approve", "approving": "Approving...", "approved": "Plan approved: the request is now In Progress", "approveHint": "Approve only changes the state; unsaved edits above still need Save Changes."}
+    "plan": {"title": "Plan", "needsHuman": "Needs a look", "approve": "Approve", "approving": "Approving...", "approved": "Plan approved: the request is now In Progress", "approveHint": "Approve only changes the state; unsaved edits above still need Save Changes."},
+    "markdown": {"edit": "Edit", "preview": "Preview", "empty": "Nothing yet. Click Edit to add text (Markdown supported)."}
   },
   "rightsRequestsPage": {
     "title": "Rights Requests",

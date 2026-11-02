@@ -36,13 +36,14 @@ import {
   IconWarning,
   Input,
   Label,
+  Markdown,
   Option,
   Select,
   Textarea,
 } from "@probo/ui";
 import useToast from "@probo/ui/src/v2/Toaster/useToast";
-import { useState } from "react";
-import { Controller } from "react-hook-form";
+import { type ReactNode, useState } from "react";
+import { Controller, type UseFormRegisterReturn } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import {
   ConnectionHandler,
@@ -53,6 +54,7 @@ import {
 import type { RightsRequestGraphNodeQuery } from "#/__generated__/core/RightsRequestGraphNodeQuery.graphql";
 import { useFormWithSchema } from "#/hooks/useFormWithSchema";
 import { useOrganizationId } from "#/hooks/useOrganizationId";
+import { consoleMarkdownImageOrigins } from "#/lib/markdownImageOrigins";
 import { z } from "#/lib/zod";
 
 import {
@@ -62,7 +64,7 @@ import {
   useUpdateRightsRequest,
 } from "../../../hooks/graph/RightsRequestGraph";
 
-import { canApprovePlan, parsePlan } from "./_lib/rightsRequestPlan";
+import { canApprovePlan, parsePlan, stripPlanLines } from "./_lib/rightsRequestPlan";
 
 const updateRequestSchema = z.object({
   requestType: z.enum(["ACCESS", "DELETION", "RECTIFICATION", "PORTABILITY", "OBJECTION", "COMPLAINT"]),
@@ -100,7 +102,7 @@ export default function RightsRequestDetailsPage(props: Props) {
     connectionId,
   );
 
-  const { register, handleSubmit, formState, control, setValue } = useFormWithSchema(
+  const { register, handleSubmit, formState, control, setValue, watch } = useFormWithSchema(
     updateRequestSchema,
     {
       defaultValues: {
@@ -177,6 +179,9 @@ export default function RightsRequestDetailsPage(props: Props) {
       setIsApproving(false);
     }
   };
+
+  const detailsDraft = watch("details") ?? "";
+  const actionTakenDraft = watch("actionTaken") ?? "";
 
   const typeOptions = ["ACCESS", "DELETION", "RECTIFICATION", "PORTABILITY", "OBJECTION", "COMPLAINT"] as const;
   const stateOptions = ["TODO", "IN_PROGRESS", "DONE", "REJECTED"] as const;
@@ -300,19 +305,13 @@ export default function RightsRequestDetailsPage(props: Props) {
               error={formState.errors.contact?.message}
             />
 
-            <div>
-              <Label>{t("rightsRequestDetailsPage.fields.details")}</Label>
-              <Textarea
-                {...register("details")}
-                placeholder={t("rightsRequestDetailsPage.placeholders.details")}
-                rows={3}
-              />
-              {formState.errors.details?.message && (
-                <div className="text-red-500 text-sm mt-1">
-                  {formState.errors.details.message}
-                </div>
-              )}
-            </div>
+            <MarkdownField
+              label={t("rightsRequestDetailsPage.fields.details")}
+              rendered={detailsDraft}
+              registration={register("details")}
+              placeholder={t("rightsRequestDetailsPage.placeholders.details")}
+              error={formState.errors.details?.message}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -369,7 +368,12 @@ export default function RightsRequestDetailsPage(props: Props) {
                   </ul>
                 )}
                 {plan.note && (
-                  <p className="text-sm text-txt-warning">{plan.note}</p>
+                  <div className="text-sm text-txt-warning prose prose-sm max-w-none [&_.prose]:max-w-none [&_.prose]:text-inherit">
+                    <Markdown
+                      content={plan.note}
+                      allowedImageOrigins={consoleMarkdownImageOrigins()}
+                    />
+                  </div>
                 )}
                 {canApprove && formState.isDirty && (
                   <p className="text-xs text-txt-tertiary">
@@ -379,19 +383,15 @@ export default function RightsRequestDetailsPage(props: Props) {
               </div>
             )}
 
-            <div>
-              <Label>{t("rightsRequestDetailsPage.fields.actionTaken")}</Label>
-              <Textarea
-                {...register("actionTaken")}
-                placeholder={t("rightsRequestDetailsPage.placeholders.actionTaken")}
-                rows={3}
-              />
-              {formState.errors.actionTaken?.message && (
-                <div className="text-red-500 text-sm mt-1">
-                  {formState.errors.actionTaken.message}
-                </div>
-              )}
-            </div>
+            {/* The PLAN line is hidden from the rendered view (the card above
+                shows it) but stays in the textarea and in what gets saved. */}
+            <MarkdownField
+              label={t("rightsRequestDetailsPage.fields.actionTaken")}
+              rendered={stripPlanLines(actionTakenDraft)}
+              registration={register("actionTaken")}
+              placeholder={t("rightsRequestDetailsPage.placeholders.actionTaken")}
+              error={formState.errors.actionTaken?.message}
+            />
 
             <div className="flex justify-end pt-4">
               {request.canUpdate && (
@@ -409,6 +409,66 @@ export default function RightsRequestDetailsPage(props: Props) {
           </form>
         </div>
       </Card>
+    </div>
+  );
+}
+
+// A textarea with a rendered Markdown view. View mode is the default; the
+// textarea only mounts in edit mode but the field stays registered through
+// react-hook-form, so saving is unchanged.
+function MarkdownField({
+  label,
+  rendered,
+  registration,
+  placeholder,
+  error,
+}: {
+  label: ReactNode;
+  rendered: string;
+  registration: UseFormRegisterReturn;
+  placeholder: string;
+  error?: string;
+}) {
+  const { t } = useTranslation();
+  const [isEditing, setIsEditing] = useState(false);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <Label>{label}</Label>
+        <Button
+          type="button"
+          variant="tertiary"
+          onClick={() => setIsEditing(editing => !editing)}
+        >
+          {isEditing
+            ? t("rightsRequestDetailsPage.markdown.preview")
+            : t("rightsRequestDetailsPage.markdown.edit")}
+        </Button>
+      </div>
+      {isEditing
+        ? (
+            <Textarea {...registration} placeholder={placeholder} rows={6} />
+          )
+        : (
+            <div className="rounded-lg border border-border-low px-3 py-2 text-sm min-h-10">
+              {rendered.trim() === ""
+                ? (
+                    <span className="text-txt-tertiary">
+                      {t("rightsRequestDetailsPage.markdown.empty")}
+                    </span>
+                  )
+                : (
+                    <div className="prose prose-sm max-w-none [&_.prose]:max-w-none">
+                      <Markdown
+                        content={rendered}
+                        allowedImageOrigins={consoleMarkdownImageOrigins()}
+                      />
+                    </div>
+                  )}
+            </div>
+          )}
+      {error && <div className="text-red-500 text-sm mt-1">{error}</div>}
     </div>
   );
 }

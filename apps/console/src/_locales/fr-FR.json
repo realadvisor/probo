@@ -4410,6 +4410,11 @@
       "approving": "Approbation...",
       "approved": "Plan approuvé : la demande est maintenant en cours",
       "approveHint": "Approuver ne change que l’état ; les modifications non enregistrées ci-dessus doivent encore être sauvegardées."
+    },
+    "markdown": {
+      "edit": "Modifier",
+      "preview": "Aperçu",
+      "empty": "Rien pour le moment. Cliquez sur Modifier pour ajouter du texte (Markdown pris en charge)."
     }
   },
   "rightsRequestsPage": {

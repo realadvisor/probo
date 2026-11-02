@@ -20,7 +20,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { canApprovePlan, parsePlan } from "./rightsRequestPlan";
+import { canApprovePlan, parsePlan, stripPlanLines } from "./rightsRequestPlan";
 
 const planLine = `PLAN ${JSON.stringify({
   version: 1,
@@ -81,5 +81,15 @@ describe("canApprovePlan", () => {
     expect(canApprovePlan("IN_PROGRESS", plan)).toBe(false);
     expect(canApprovePlan("TODO", null)).toBe(false);
     expect(canApprovePlan("TODO", plan && { ...plan, needsHuman: true })).toBe(false);
+  });
+});
+
+describe("stripPlanLines", () => {
+  it("removes PLAN lines and keeps the rest", () => {
+    expect(stripPlanLines(`INTAKE receipt sent\n${planLine}\n**Done** — all steps`)).toBe(
+      "INTAKE receipt sent\n**Done** — all steps",
+    );
+    expect(stripPlanLines(planLine)).toBe("");
+    expect(stripPlanLines(null)).toBe("");
   });
 });

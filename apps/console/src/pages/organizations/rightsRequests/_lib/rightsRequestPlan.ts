@@ -100,3 +100,16 @@ export function canApprovePlan(
 ): plan is Plan {
   return requestState === "TODO" && plan !== null && !plan.needsHuman;
 }
+
+// The actionTaken text without its PLAN lines, for rendering next to the plan
+// card: the card already shows the plan, the rest is free text (Markdown).
+export function stripPlanLines(actionTaken: string | null | undefined): string {
+  if (!actionTaken) {
+    return "";
+  }
+  return actionTaken
+    .split(/\r?\n/)
+    .filter(line => !line.trim().startsWith(PLAN_PREFIX))
+    .join("\n")
+    .trim();
+}

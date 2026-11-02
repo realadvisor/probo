@@ -4395,6 +4395,11 @@
       "approving": "Goedkeuren...",
       "approved": "Plan goedgekeurd: het verzoek is nu In behandeling",
       "approveHint": "Goedkeuren wijzigt alleen de status; niet-opgeslagen wijzigingen hierboven moeten nog worden opgeslagen."
+    },
+    "markdown": {
+      "edit": "Bewerken",
+      "preview": "Voorbeeld",
+      "empty": "Nog niets. Klik op Bewerken om tekst toe te voegen (Markdown wordt ondersteund)."
     }
   },
   "rightsRequestsPage": {
