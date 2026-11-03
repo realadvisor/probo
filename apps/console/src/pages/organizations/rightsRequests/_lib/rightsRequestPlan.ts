@@ -23,9 +23,17 @@
 // parses and renders it; the other lines (intake receipts, DONE notes) are
 // left to the textarea.
 
+export const PLAN_STATUSES = ["planned", "approved", "done", "blocked", "manual"] as const;
+export type PlanStatus = (typeof PLAN_STATUSES)[number];
+
+export const PLAN_STEP_STATUSES = ["pending", "done", "failed", "unknown", "skipped"] as const;
+export type PlanStepStatus = (typeof PLAN_STEP_STATUSES)[number];
+
 export type PlanStep = {
   system: string;
   action: string;
+  status: PlanStepStatus;
+  detail: string | null;
 };
 
 export type Plan = {
@@ -34,12 +42,31 @@ export type Plan = {
   steps: PlanStep[];
   needsHuman: boolean;
   note: string | null;
+  // Lifecycle written back by the worker; lines without it are "planned".
+  status: PlanStatus;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  completedAt: string | null;
 };
+
+// Statuses the worker has already taken past the approval step: nothing left
+// for a reviewer to approve.
+const CLOSED_PLAN_STATUSES: readonly PlanStatus[] = ["done", "blocked", "manual"];
 
 const PLAN_PREFIX = "PLAN ";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function optionalString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+}
+
+function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : fallback;
 }
 
 function parseStep(value: unknown): PlanStep | null {
@@ -50,7 +77,12 @@ function parseStep(value: unknown): PlanStep | null {
   if (typeof system !== "string" || typeof action !== "string") {
     return null;
   }
-  return { system, action };
+  return {
+    system,
+    action,
+    status: oneOf(value.status, PLAN_STEP_STATUSES, "pending"),
+    detail: optionalString(value.detail),
+  };
 }
 
 // Returns the plan carried by actionTaken, or null when there is none or the
@@ -88,17 +120,27 @@ export function parsePlan(actionTaken: string | null | undefined): Plan | null {
     summary: raw.summary,
     steps,
     needsHuman: raw.needsHuman === true,
-    note: typeof raw.note === "string" && raw.note.trim() !== "" ? raw.note : null,
+    note: optionalString(raw.note),
+    status: oneOf(raw.status, PLAN_STATUSES, "planned"),
+    approvedBy: optionalString(raw.approvedBy),
+    approvedAt: optionalString(raw.approvedAt),
+    completedAt: optionalString(raw.completedAt),
   };
 }
 
 // A request can be approved from a plan without anyone reading further when
-// it is still TODO and the worker did not flag it for a human.
+// it is still TODO, the worker did not flag it for a human and the plan is
+// not already done, blocked or handed over to manual handling.
 export function canApprovePlan(
   requestState: string,
   plan: Plan | null,
 ): plan is Plan {
-  return requestState === "TODO" && plan !== null && !plan.needsHuman;
+  return (
+    requestState === "TODO"
+    && plan !== null
+    && !plan.needsHuman
+    && !CLOSED_PLAN_STATUSES.includes(plan.status)
+  );
 }
 
 // The actionTaken text without its PLAN lines, for rendering next to the plan
