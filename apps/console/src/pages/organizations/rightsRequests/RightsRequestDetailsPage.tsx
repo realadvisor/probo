@@ -25,6 +25,7 @@ import {
   type GraphQLError,
   toDateInput,
 } from "@probo/helpers";
+import { dateFormat } from "@probo/i18n";
 import {
   ActionDropdown,
   Badge,
@@ -64,6 +65,7 @@ import {
   useUpdateRightsRequest,
 } from "../../../hooks/graph/RightsRequestGraph";
 
+import { PlanStatusBadge, PlanStepMark } from "./_components/PlanStatus";
 import { markdownHardBreaks } from "./_lib/markdownHardBreaks";
 import { canApprovePlan, parsePlan, stripPlanLines } from "./_lib/rightsRequestPlan";
 
@@ -87,7 +89,7 @@ export default function RightsRequestDetailsPage(props: Props) {
     props.queryRef,
   );
   const request = data.node;
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const toast = useToast();
   const organizationId = useOrganizationId();
 
@@ -334,6 +336,7 @@ export default function RightsRequestDetailsPage(props: Props) {
                       <span className="font-semibold">
                         {t("rightsRequestDetailsPage.plan.title")}
                       </span>
+                      <PlanStatusBadge status={plan.status} />
                       {plan.needsHuman && (
                         <Badge variant="warning">
                           <IconWarning size={12} />
@@ -342,6 +345,21 @@ export default function RightsRequestDetailsPage(props: Props) {
                       )}
                     </div>
                     <p className="text-sm text-txt-secondary">{plan.summary}</p>
+                    {(plan.approvedBy || plan.approvedAt) && (
+                      <p className="text-xs text-txt-tertiary">
+                        {t("rightsRequestDetailsPage.plan.approvedBy", {
+                          name: plan.approvedBy ?? t("rightsRequestDetailsPage.plan.unknownApprover"),
+                          date: plan.approvedAt ? dateFormat(i18n.language, plan.approvedAt) : "",
+                        })}
+                      </p>
+                    )}
+                    {plan.completedAt && (
+                      <p className="text-xs text-txt-tertiary">
+                        {t("rightsRequestDetailsPage.plan.completedAt", {
+                          date: dateFormat(i18n.language, plan.completedAt),
+                        })}
+                      </p>
+                    )}
                   </div>
                   {canApprove && (
                     <Button
@@ -361,9 +379,18 @@ export default function RightsRequestDetailsPage(props: Props) {
                   <ul className="space-y-1 text-sm">
                     {plan.steps.map((step, index) => (
                       <li key={index} className="flex gap-2">
+                        <PlanStepMark status={step.status} />
                         <span className="shrink-0 font-medium">{step.system}</span>
                         <span className="text-txt-tertiary">—</span>
-                        <span className="text-txt-secondary">{step.action}</span>
+                        <span className="text-txt-secondary">
+                          {step.action}
+                          {step.detail && (
+                            <span className="text-txt-tertiary">
+                              {" · "}
+                              {step.detail}
+                            </span>
+                          )}
+                        </span>
                       </li>
                     ))}
                   </ul>
