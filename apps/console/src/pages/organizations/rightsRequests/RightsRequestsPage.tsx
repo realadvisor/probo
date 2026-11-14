@@ -92,6 +92,7 @@ import {
   updateRightsRequestMutation,
 } from "../../../hooks/graph/RightsRequestGraph";
 
+import { PlanStatusBadge } from "./_components/PlanStatus";
 import { canApprovePlan, parsePlan, type Plan } from "./_lib/rightsRequestPlan";
 import { CreateRightsRequestDialog } from "./dialogs/CreateRightsRequestDialog";
 
@@ -859,6 +860,9 @@ function RequestRow({
         {plan
           ? (
               <div className="flex items-center gap-2 min-w-0">
+                {plan.status !== "planned" && (
+                  <PlanStatusBadge status={plan.status} className="shrink-0" />
+                )}
                 {plan.needsHuman && (
                   <Badge variant="warning" className="shrink-0">
                     <IconWarning size={12} />

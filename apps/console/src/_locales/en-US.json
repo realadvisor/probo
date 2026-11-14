@@ -2502,8 +2502,12 @@
     "fields": { "requestType": "Request Type", "state": "State", "dataSubject": "Data Subject", "contact": "Contact", "details": "Details", "deadline": "Deadline", "actionTaken": "Action Taken" },
     "placeholders": { "details": "Enter request details", "actionTaken": "Enter action taken" },
     "actions": { "delete": "Delete", "saving": "Saving...", "save": "Save Changes" },
-    "plan": {"title": "Plan", "needsHuman": "Needs a look", "approve": "Approve", "approving": "Approving...", "approved": "Plan approved: the request is now In Progress", "approveHint": "Approve only changes the state; unsaved edits above still need Save Changes."},
+    "plan": {"title": "Plan", "needsHuman": "Needs a look", "approve": "Approve", "approving": "Approving...", "approved": "Plan approved: the request is now In Progress", "approveHint": "Approve only changes the state; unsaved edits above still need Save Changes.", "approvedBy": "Approved by {{name}} \u00b7 {{date}}", "completedAt": "Completed {{date}}", "unknownApprover": "unknown"},
     "markdown": {"edit": "Edit", "preview": "Preview", "empty": "Nothing yet. Click Edit to add text (Markdown supported)."}
+  },
+  "rightsRequestPlan": {
+    "status": {"planned": "Planned", "approved": "Approved", "done": "Done", "blocked": "Blocked", "manual": "Manual"},
+    "stepStatus": {"pending": "Pending", "done": "Done", "failed": "Failed", "unknown": "Unknown", "skipped": "Skipped"}
   },
   "rightsRequestsPage": {
     "title": "Rights Requests",

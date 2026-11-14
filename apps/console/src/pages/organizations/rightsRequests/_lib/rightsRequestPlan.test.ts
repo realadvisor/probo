@@ -46,12 +46,43 @@ describe("parsePlan", () => {
       version: 1,
       summary: "CRM 1 user · Close 1 contact · suppress · reply FR",
       steps: [
-        { system: "SendGrid", action: "Global suppression" },
-        { system: "Inbox", action: "Reply: deleted and unsubscribed (FR)" },
+        { system: "SendGrid", action: "Global suppression", status: "pending", detail: null },
+        { system: "Inbox", action: "Reply: deleted and unsubscribed (FR)", status: "pending", detail: null },
       ],
       needsHuman: false,
       note: null,
+      status: "planned",
+      approvedBy: null,
+      approvedAt: null,
+      completedAt: null,
     });
+  });
+
+  it("reads the lifecycle fields and falls back on unknown values", () => {
+    const plan = parsePlan(
+      `PLAN ${JSON.stringify({
+        summary: "s",
+        status: "done",
+        approvedBy: "Jonas",
+        approvedAt: "2026-11-02T12:40:00Z",
+        completedAt: "2026-11-02T12:45:00Z",
+        steps: [
+          { system: "SendGrid", action: "suppress", status: "done", detail: "2 lists" },
+          { system: "Close", action: "block", status: "failed", detail: "" },
+          { system: "Inbox", action: "reply", status: "nonsense" },
+        ],
+      })}`,
+    );
+    expect(plan?.status).toBe("done");
+    expect(plan?.approvedBy).toBe("Jonas");
+    expect(plan?.approvedAt).toBe("2026-11-02T12:40:00Z");
+    expect(plan?.completedAt).toBe("2026-11-02T12:45:00Z");
+    expect(plan?.steps.map(step => [step.status, step.detail])).toEqual([
+      ["done", "2 lists"],
+      ["failed", null],
+      ["pending", null],
+    ]);
+    expect(parsePlan(`PLAN {"summary":"s","status":"weird"}`)?.status).toBe("planned");
   });
 
   it("keeps needsHuman and the note", () => {
@@ -68,7 +99,7 @@ describe("parsePlan", () => {
     const plan = parsePlan(
       `PLAN {"summary":"s","steps":[{"system":"CRM"},{"system":"Close","action":"note"},"junk"]}`,
     );
-    expect(plan?.steps).toEqual([{ system: "Close", action: "note" }]);
+    expect(plan?.steps).toEqual([{ system: "Close", action: "note", status: "pending", detail: null }]);
     expect(plan?.needsHuman).toBe(false);
   });
 });
@@ -81,6 +112,13 @@ describe("canApprovePlan", () => {
     expect(canApprovePlan("IN_PROGRESS", plan)).toBe(false);
     expect(canApprovePlan("TODO", null)).toBe(false);
     expect(canApprovePlan("TODO", plan && { ...plan, needsHuman: true })).toBe(false);
+  });
+
+  it("refuses plans the worker already closed", () => {
+    expect(canApprovePlan("TODO", plan && { ...plan, status: "approved" })).toBe(true);
+    for (const status of ["done", "blocked", "manual"] as const) {
+      expect(canApprovePlan("TODO", plan && { ...plan, status })).toBe(false);
+    }
   });
 });
 

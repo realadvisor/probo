@@ -4394,12 +4394,31 @@
       "approve": "Goedkeuren",
       "approving": "Goedkeuren...",
       "approved": "Plan goedgekeurd: het verzoek is nu In behandeling",
-      "approveHint": "Goedkeuren wijzigt alleen de status; niet-opgeslagen wijzigingen hierboven moeten nog worden opgeslagen."
+      "approveHint": "Goedkeuren wijzigt alleen de status; niet-opgeslagen wijzigingen hierboven moeten nog worden opgeslagen.",
+      "approvedBy": "Goedgekeurd door {{name}} · {{date}}",
+      "completedAt": "Afgerond op {{date}}",
+      "unknownApprover": "onbekend"
     },
     "markdown": {
       "edit": "Bewerken",
       "preview": "Voorbeeld",
       "empty": "Nog niets. Klik op Bewerken om tekst toe te voegen (Markdown wordt ondersteund)."
+    }
+  },
+  "rightsRequestPlan": {
+    "status": {
+      "planned": "Gepland",
+      "approved": "Goedgekeurd",
+      "done": "Afgerond",
+      "blocked": "Geblokkeerd",
+      "manual": "Handmatig"
+    },
+    "stepStatus": {
+      "pending": "In afwachting",
+      "done": "Afgerond",
+      "failed": "Mislukt",
+      "unknown": "Onbekend",
+      "skipped": "Overgeslagen"
     }
   },
   "rightsRequestsPage": {

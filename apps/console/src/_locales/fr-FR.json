@@ -4409,12 +4409,31 @@
       "approve": "Approuver",
       "approving": "Approbation...",
       "approved": "Plan approuvé : la demande est maintenant en cours",
-      "approveHint": "Approuver ne change que l’état ; les modifications non enregistrées ci-dessus doivent encore être sauvegardées."
+      "approveHint": "Approuver ne change que l’état ; les modifications non enregistrées ci-dessus doivent encore être sauvegardées.",
+      "approvedBy": "Approuvé par {{name}} · {{date}}",
+      "completedAt": "Terminé le {{date}}",
+      "unknownApprover": "inconnu"
     },
     "markdown": {
       "edit": "Modifier",
       "preview": "Aperçu",
       "empty": "Rien pour le moment. Cliquez sur Modifier pour ajouter du texte (Markdown pris en charge)."
+    }
+  },
+  "rightsRequestPlan": {
+    "status": {
+      "planned": "Planifié",
+      "approved": "Approuvé",
+      "done": "Terminé",
+      "blocked": "Bloqué",
+      "manual": "Manuel"
+    },
+    "stepStatus": {
+      "pending": "En attente",
+      "done": "Terminé",
+      "failed": "Échoué",
+      "unknown": "Inconnu",
+      "skipped": "Ignoré"
     }
   },
   "rightsRequestsPage": {
