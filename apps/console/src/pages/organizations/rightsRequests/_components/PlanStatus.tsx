@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 import type { PlanStatus, PlanStepStatus } from "../_lib/rightsRequestPlan";
 
 const STATUS_VARIANT: Record<PlanStatus, "neutral" | "info" | "success" | "danger" | "warning"> = {
+  draft: "neutral",
   planned: "neutral",
   approved: "info",
   done: "success",
@@ -41,6 +42,7 @@ export function PlanStatusBadge({ status, className }: { status: PlanStatus; cla
 }
 
 const OUTCOME_GLYPH: Record<PlanStatus, string> = {
+  draft: "✎",
   planned: "○",
   approved: "…",
   done: "✓",

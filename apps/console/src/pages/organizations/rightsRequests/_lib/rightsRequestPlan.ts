@@ -23,7 +23,9 @@
 // parses and renders it; the other lines (intake receipts, DONE notes) are
 // left to the textarea.
 
-export const PLAN_STATUSES = ["planned", "approved", "done", "blocked", "manual"] as const;
+// "draft" is a plan the worker shows before it has done anything: a reviewer
+// reads it, there is nothing to approve yet.
+export const PLAN_STATUSES = ["draft", "planned", "approved", "done", "blocked", "manual"] as const;
 export type PlanStatus = (typeof PLAN_STATUSES)[number];
 
 export const PLAN_STEP_STATUSES = ["pending", "done", "failed", "unknown", "skipped"] as const;
@@ -49,9 +51,9 @@ export type Plan = {
   completedAt: string | null;
 };
 
-// Statuses the worker has already taken past the approval step: nothing left
-// for a reviewer to approve.
-const CLOSED_PLAN_STATUSES: readonly PlanStatus[] = ["done", "blocked", "manual"];
+// Statuses with nothing for a reviewer to approve: the worker has taken the
+// plan past the approval step, or (draft) has not reached it yet.
+const CLOSED_PLAN_STATUSES: readonly PlanStatus[] = ["draft", "done", "blocked", "manual"];
 
 const PLAN_PREFIX = "PLAN ";
 

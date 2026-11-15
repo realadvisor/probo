@@ -120,6 +120,11 @@ describe("canApprovePlan", () => {
       expect(canApprovePlan("TODO", plan && { ...plan, status })).toBe(false);
     }
   });
+
+  it("refuses a draft: the worker has done nothing yet", () => {
+    expect(parsePlan(planLine.replace('"note":""', '"note":"","status":"draft"'))?.status).toBe("draft");
+    expect(canApprovePlan("TODO", plan && { ...plan, status: "draft" })).toBe(false);
+  });
 });
 
 describe("stripPlanLines", () => {

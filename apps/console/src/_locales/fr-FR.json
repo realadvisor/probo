@@ -4422,6 +4422,7 @@
   },
   "rightsRequestPlan": {
     "outcome": {
+      "draft": "Brouillon : rien n'a encore été exécuté",
       "queued": "Approuvé, en attente d'exécution",
       "planned": "En attente d'approbation",
       "approved": "Approuvé, en cours",
@@ -4430,6 +4431,7 @@
       "manual": "À traiter à la main"
     },
     "status": {
+      "draft": "Brouillon",
       "planned": "Planifié",
       "approved": "Approuvé",
       "done": "Terminé",
