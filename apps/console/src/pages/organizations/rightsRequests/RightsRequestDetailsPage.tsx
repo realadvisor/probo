@@ -67,7 +67,7 @@ import {
 
 import { PlanOutcome, PlanStepMark } from "./_components/PlanStatus";
 import { markdownHardBreaks } from "./_lib/markdownHardBreaks";
-import { canApprovePlan, parsePlan, stripPlanLines } from "./_lib/rightsRequestPlan";
+import { appendFeedback, canApprovePlan, feedbackNotes, parsePlan, stripPlanLines } from "./_lib/rightsRequestPlan";
 
 const updateRequestSchema = z.object({
   requestType: z.enum(["ACCESS", "DELETION", "RECTIFICATION", "PORTABILITY", "OBJECTION", "COMPLAINT"]),
@@ -180,6 +180,46 @@ export default function RightsRequestDetailsPage(props: Props) {
       });
     } finally {
       setIsApproving(false);
+    }
+  };
+
+  // What the reviewer tells the worker: saved as a note the worker reads, and
+  // the request goes back to To Do so the worker proposes again. An approval
+  // that has not run yet is withdrawn by this.
+  const notes = feedbackNotes(request.actionTaken);
+  const [feedback, setFeedback] = useState("");
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
+  const canGiveFeedback
+    = request.canUpdate && request.requestState !== "DONE" && request.requestState !== "REJECTED";
+
+  const handleFeedback = async () => {
+    const text = feedback.trim();
+    if (!text) {
+      return;
+    }
+    setIsSendingFeedback(true);
+    try {
+      const actionTaken = appendFeedback(request.actionTaken, text);
+      await updateRequest({ id: request.id!, actionTaken, requestState: "TODO" });
+      setValue("actionTaken", actionTaken);
+      setValue("requestState", "TODO");
+      setFeedback("");
+      toast.add({
+        title: t("rightsRequestDetailsPage.messages.success"),
+        description: t("rightsRequestDetailsPage.plan.feedbackSent"),
+        type: "success",
+      });
+    } catch (error) {
+      toast.add({
+        title: t("rightsRequestDetailsPage.messages.error"),
+        description: formatError(
+          t("rightsRequestDetailsPage.errors.update"),
+          error as GraphQLError,
+        ),
+        type: "error",
+      });
+    } finally {
+      setIsSendingFeedback(false);
     }
   };
 
@@ -411,6 +451,47 @@ export default function RightsRequestDetailsPage(props: Props) {
                   <p className="text-xs text-txt-tertiary">
                     {t("rightsRequestDetailsPage.plan.approveHint")}
                   </p>
+                )}
+                {notes.length > 0 && (
+                  <div className="text-sm">
+                    <p className="font-medium">{t("rightsRequestDetailsPage.plan.feedbackGiven")}</p>
+                    <ul className="list-disc pl-5 text-txt-secondary">
+                      {notes.map((note, index) => (
+                        <li key={index}>{note}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {canGiveFeedback && (
+                  <div className="space-y-2 border-t border-border-low pt-3">
+                    <Label>{t("rightsRequestDetailsPage.plan.feedbackLabel")}</Label>
+                    <Textarea
+                      value={feedback}
+                      onChange={e => setFeedback(e.target.value)}
+                      placeholder={t("rightsRequestDetailsPage.plan.feedbackPlaceholder")}
+                      rows={2}
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="tertiary"
+                        disabled={isSendingFeedback}
+                        onClick={() => setFeedback(t("rightsRequestDetailsPage.plan.handOverText"))}
+                      >
+                        {t("rightsRequestDetailsPage.plan.handOver")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={isSendingFeedback || feedback.trim() === ""}
+                        onClick={() => void handleFeedback()}
+                      >
+                        {isSendingFeedback
+                          ? t("rightsRequestDetailsPage.plan.feedbackSending")
+                          : t("rightsRequestDetailsPage.plan.feedbackSend")}
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}

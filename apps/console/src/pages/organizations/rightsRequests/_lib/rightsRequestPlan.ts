@@ -145,15 +145,46 @@ export function canApprovePlan(
   );
 }
 
-// The actionTaken text without its PLAN lines, for rendering next to the plan
-// card: the card already shows the plan, the rest is free text (Markdown).
+// A reviewer talks to the worker with `NOTE: …` lines in actionTaken: the
+// worker reads them and proposes again. The console writes and shows them, so
+// nobody types the marker.
+const NOTE_PATTERN = /^\s*note\s*:\s*/i;
+
+function isMachineLine(line: string): boolean {
+  return line.trim().startsWith(PLAN_PREFIX) || NOTE_PATTERN.test(line);
+}
+
+// The actionTaken text without its PLAN and NOTE lines, for rendering next to
+// the plan card: the card already shows both, the rest is the history of what
+// was done (Markdown).
 export function stripPlanLines(actionTaken: string | null | undefined): string {
   if (!actionTaken) {
     return "";
   }
   return actionTaken
     .split(/\r?\n/)
-    .filter(line => !line.trim().startsWith(PLAN_PREFIX))
+    .filter(line => !isMachineLine(line))
     .join("\n")
     .trim();
+}
+
+// What the reviewer told the worker so far, oldest first.
+export function feedbackNotes(actionTaken: string | null | undefined): string[] {
+  return (actionTaken ?? "")
+    .split(/\r?\n/)
+    .filter(line => NOTE_PATTERN.test(line))
+    .map(line => line.replace(NOTE_PATTERN, "").trim())
+    .filter(Boolean);
+}
+
+// actionTaken with one more note for the worker, on a single line, placed
+// before the PLAN line so the plan stays last.
+export function appendFeedback(actionTaken: string | null | undefined, text: string): string {
+  const note = `NOTE: ${text.replace(/\s+/g, " ").trim()}`;
+  const lines = (actionTaken ?? "").split(/\r?\n/).filter(line => line.trim() !== "");
+  const planAt = lines.findIndex(line => line.trim().startsWith(PLAN_PREFIX));
+  if (planAt < 0) {
+    return [...lines, note].join("\n");
+  }
+  return [...lines.slice(0, planAt), note, ...lines.slice(planAt)].join("\n");
 }
