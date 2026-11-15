@@ -400,7 +400,7 @@ export default function RightsRequestDetailsPage(props: Props) {
                   </ul>
                 )}
                 {plan.note && (
-                  <div className="text-sm text-txt-warning prose prose-sm max-w-none [&_.prose]:max-w-none [&_.prose]:text-inherit">
+                  <div className="text-sm text-txt-secondary prose prose-sm max-w-none [&_.prose]:max-w-none [&_.prose]:text-inherit">
                     <Markdown
                       content={plan.note}
                       allowedImageOrigins={consoleMarkdownImageOrigins()}

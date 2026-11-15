@@ -4422,6 +4422,7 @@
   },
   "rightsRequestPlan": {
     "outcome": {
+      "waiting": "Étape faite, en attente de la réponse de la personne",
       "queued": "Approuvé, en attente d'exécution",
       "planned": "En attente d'approbation",
       "approved": "Approuvé, en cours",
@@ -4430,6 +4431,7 @@
       "manual": "À traiter à la main"
     },
     "status": {
+      "waiting": "En attente de réponse",
       "planned": "Planifié",
       "approved": "Approuvé",
       "done": "Terminé",

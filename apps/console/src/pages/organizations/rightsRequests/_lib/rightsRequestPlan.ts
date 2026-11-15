@@ -23,7 +23,9 @@
 // parses and renders it; the other lines (intake receipts, DONE notes) are
 // left to the textarea.
 
-export const PLAN_STATUSES = ["planned", "approved", "done", "blocked", "manual"] as const;
+// "waiting": the approved step asked the person something, the worker waits
+// for their answer and will then propose the next step.
+export const PLAN_STATUSES = ["planned", "approved", "waiting", "done", "blocked", "manual"] as const;
 export type PlanStatus = (typeof PLAN_STATUSES)[number];
 
 export const PLAN_STEP_STATUSES = ["pending", "done", "failed", "unknown", "skipped"] as const;
@@ -51,7 +53,7 @@ export type Plan = {
 
 // Statuses the worker has already taken past the approval step: nothing left
 // for a reviewer to approve.
-const CLOSED_PLAN_STATUSES: readonly PlanStatus[] = ["done", "blocked", "manual"];
+const CLOSED_PLAN_STATUSES: readonly PlanStatus[] = ["waiting", "done", "blocked", "manual"];
 
 const PLAN_PREFIX = "PLAN ";
 
