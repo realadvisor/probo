@@ -4406,6 +4406,13 @@
     }
   },
   "rightsRequestPlan": {
+    "outcome": {
+      "planned": "Wacht op goedkeuring",
+      "approved": "Goedgekeurd, wordt uitgevoerd",
+      "done": "Uitgevoerd",
+      "blocked": "Geblokkeerd: iemand moet ingrijpen",
+      "manual": "Handmatig af te handelen"
+    },
     "status": {
       "planned": "Gepland",
       "approved": "Goedgekeurd",

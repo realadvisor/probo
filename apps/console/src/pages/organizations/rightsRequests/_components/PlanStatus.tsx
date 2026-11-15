@@ -40,6 +40,29 @@ export function PlanStatusBadge({ status, className }: { status: PlanStatus; cla
   );
 }
 
+const OUTCOME_GLYPH: Record<PlanStatus, string> = {
+  planned: "○",
+  approved: "…",
+  done: "✓",
+  blocked: "✕",
+  manual: "!",
+};
+
+// What became of the plan, shown where the Approve button was: once a plan
+// is approved the button is gone, and the reviewer should see at a glance
+// that it ran (or why it did not) without reading the steps.
+export function PlanOutcome({ status }: { status: PlanStatus }) {
+  const { t } = useTranslation();
+  return (
+    <Badge variant={STATUS_VARIANT[status]} size="md" className="shrink-0">
+      <span aria-hidden="true" className="font-mono">
+        {OUTCOME_GLYPH[status]}
+      </span>
+      {t(`rightsRequestPlan.outcome.${status}`)}
+    </Badge>
+  );
+}
+
 const STEP_MARK: Record<PlanStepStatus, { glyph: string; className: string }> = {
   pending: { glyph: "○", className: "text-txt-tertiary" },
   done: { glyph: "✓", className: "text-txt-success" },
