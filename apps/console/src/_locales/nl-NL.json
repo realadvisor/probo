@@ -4407,6 +4407,7 @@
   },
   "rightsRequestPlan": {
     "outcome": {
+      "waiting": "Stap uitgevoerd, wacht op antwoord van de persoon",
       "queued": "Goedgekeurd, wacht op uitvoering",
       "planned": "Wacht op goedkeuring",
       "approved": "Goedgekeurd, wordt uitgevoerd",
@@ -4415,6 +4416,7 @@
       "manual": "Handmatig af te handelen"
     },
     "status": {
+      "waiting": "Wacht op antwoord",
       "planned": "Gepland",
       "approved": "Goedgekeurd",
       "done": "Afgerond",

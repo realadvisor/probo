@@ -116,7 +116,7 @@ describe("canApprovePlan", () => {
 
   it("refuses plans the worker already closed", () => {
     expect(canApprovePlan("TODO", plan && { ...plan, status: "approved" })).toBe(true);
-    for (const status of ["done", "blocked", "manual"] as const) {
+    for (const status of ["waiting", "done", "blocked", "manual"] as const) {
       expect(canApprovePlan("TODO", plan && { ...plan, status })).toBe(false);
     }
   });

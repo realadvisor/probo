@@ -26,6 +26,7 @@ import type { PlanStatus, PlanStepStatus } from "../_lib/rightsRequestPlan";
 const STATUS_VARIANT: Record<PlanStatus, "neutral" | "info" | "success" | "danger" | "warning"> = {
   planned: "neutral",
   approved: "info",
+  waiting: "info",
   done: "success",
   blocked: "danger",
   manual: "warning",
@@ -43,6 +44,7 @@ export function PlanStatusBadge({ status, className }: { status: PlanStatus; cla
 const OUTCOME_GLYPH: Record<PlanStatus, string> = {
   planned: "○",
   approved: "…",
+  waiting: "⏳",
   done: "✓",
   blocked: "✕",
   manual: "!",
