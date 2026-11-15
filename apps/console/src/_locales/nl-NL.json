@@ -4407,6 +4407,7 @@
   },
   "rightsRequestPlan": {
     "outcome": {
+      "queued": "Goedgekeurd, wacht op uitvoering",
       "planned": "Wacht op goedkeuring",
       "approved": "Goedgekeurd, wordt uitgevoerd",
       "done": "Uitgevoerd",

@@ -50,15 +50,18 @@ const OUTCOME_GLYPH: Record<PlanStatus, string> = {
 
 // What became of the plan, shown where the Approve button was: once a plan
 // is approved the button is gone, and the reviewer should see at a glance
-// that it ran (or why it did not) without reading the steps.
-export function PlanOutcome({ status }: { status: PlanStatus }) {
+// that it ran (or why it did not) without reading the steps. A plan that is
+// still "planned" on a request that already left TODO was approved and has
+// not been picked up by the worker yet.
+export function PlanOutcome({ status, requestState }: { status: PlanStatus; requestState: string }) {
   const { t } = useTranslation();
+  const queued = status === "planned" && requestState !== "TODO";
   return (
-    <Badge variant={STATUS_VARIANT[status]} size="md" className="shrink-0">
+    <Badge variant={queued ? "info" : STATUS_VARIANT[status]} size="md" className="shrink-0">
       <span aria-hidden="true" className="font-mono">
-        {OUTCOME_GLYPH[status]}
+        {queued ? OUTCOME_GLYPH.approved : OUTCOME_GLYPH[status]}
       </span>
-      {t(`rightsRequestPlan.outcome.${status}`)}
+      {t(`rightsRequestPlan.outcome.${queued ? "queued" : status}`)}
     </Badge>
   );
 }
