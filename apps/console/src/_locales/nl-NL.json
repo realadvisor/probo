@@ -4397,7 +4397,15 @@
       "approveHint": "Goedkeuren wijzigt alleen de status; niet-opgeslagen wijzigingen hierboven moeten nog worden opgeslagen.",
       "approvedBy": "Goedgekeurd door {{name}} · {{date}}",
       "completedAt": "Afgerond op {{date}}",
-      "unknownApprover": "onbekend"
+      "unknownApprover": "onbekend",
+      "feedbackLabel": "Zeg het tegen de agent",
+      "feedbackPlaceholder": "Wat moet er anders? Bijvoorbeeld: noem het kantoor niet, of antwoord in het Frans.",
+      "feedbackSend": "Opnieuw voorstellen",
+      "feedbackSending": "Verzenden...",
+      "feedbackSent": "Doorgegeven aan de agent: binnen enkele minuten volgt een nieuw voorstel.",
+      "feedbackGiven": "Wat u de agent hebt verteld",
+      "handOver": "Overdragen aan een collega",
+      "handOverText": "Hand this request over to the colleague in charge of this customer (CSM or country manager)."
     },
     "markdown": {
       "edit": "Bewerken",

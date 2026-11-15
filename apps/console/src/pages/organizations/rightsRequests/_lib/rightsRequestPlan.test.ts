@@ -20,7 +20,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { canApprovePlan, parsePlan, stripPlanLines } from "./rightsRequestPlan";
+import { appendFeedback, canApprovePlan, feedbackNotes, parsePlan, stripPlanLines } from "./rightsRequestPlan";
 
 const planLine = `PLAN ${JSON.stringify({
   version: 1,
@@ -119,6 +119,20 @@ describe("canApprovePlan", () => {
     for (const status of ["waiting", "done", "blocked", "manual"] as const) {
       expect(canApprovePlan("TODO", plan && { ...plan, status })).toBe(false);
     }
+  });
+});
+
+describe("feedback notes", () => {
+  it("adds a note before the plan line and reads it back", () => {
+    const next = appendFeedback(`INTAKE receipt sent\n${planLine}`, "  hand this\nto the Spain CSM ");
+    expect(next).toBe(`INTAKE receipt sent\nNOTE: hand this to the Spain CSM\n${planLine}`);
+    expect(feedbackNotes(next)).toEqual(["hand this to the Spain CSM"]);
+    expect(parsePlan(next)).not.toBeNull();
+  });
+
+  it("works without a plan and hides notes from the history", () => {
+    expect(appendFeedback(null, "answer in French")).toBe("NOTE: answer in French");
+    expect(stripPlanLines(`TURN 1 done\nNOTE: answer in French\n${planLine}`)).toBe("TURN 1 done");
   });
 });
 

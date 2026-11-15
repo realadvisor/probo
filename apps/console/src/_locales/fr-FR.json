@@ -4412,7 +4412,15 @@
       "approveHint": "Approuver ne change que l’état ; les modifications non enregistrées ci-dessus doivent encore être sauvegardées.",
       "approvedBy": "Approuvé par {{name}} · {{date}}",
       "completedAt": "Terminé le {{date}}",
-      "unknownApprover": "inconnu"
+      "unknownApprover": "inconnu",
+      "feedbackLabel": "Dire à l'agent",
+      "feedbackPlaceholder": "Que faut-il changer ? Par exemple : ne pas mentionner l'agence, ou répondre en français.",
+      "feedbackSend": "Proposer à nouveau",
+      "feedbackSending": "Envoi...",
+      "feedbackSent": "Transmis à l'agent : une nouvelle proposition arrive dans quelques minutes.",
+      "feedbackGiven": "Ce que vous avez dit à l'agent",
+      "handOver": "Confier à un collègue",
+      "handOverText": "Hand this request over to the colleague in charge of this customer (CSM or country manager)."
     },
     "markdown": {
       "edit": "Modifier",
