@@ -373,7 +373,10 @@ export default function RightsRequestDetailsPage(props: Props) {
                         : t("rightsRequestDetailsPage.plan.approve")}
                     </Button>
                   ) : (
-                    <PlanOutcome status={plan.status} />
+                    <PlanOutcome
+                      status={plan.status}
+                      requestState={request.requestState ?? "TODO"}
+                    />
                   )}
                 </div>
                 {plan.steps.length > 0 && (

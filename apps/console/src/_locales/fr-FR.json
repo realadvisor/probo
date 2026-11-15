@@ -4422,6 +4422,7 @@
   },
   "rightsRequestPlan": {
     "outcome": {
+      "queued": "Approuvé, en attente d'exécution",
       "planned": "En attente d'approbation",
       "approved": "Approuvé, en cours",
       "done": "Exécuté",
