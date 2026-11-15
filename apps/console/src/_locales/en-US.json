@@ -2506,6 +2506,7 @@
     "markdown": {"edit": "Edit", "preview": "Preview", "empty": "Nothing yet. Click Edit to add text (Markdown supported)."}
   },
   "rightsRequestPlan": {
+    "outcome": {"planned": "Waiting for approval", "approved": "Approved, running", "done": "Executed", "blocked": "Blocked: needs a person", "manual": "To handle by hand"},
     "status": {"planned": "Planned", "approved": "Approved", "done": "Done", "blocked": "Blocked", "manual": "Manual"},
     "stepStatus": {"pending": "Pending", "done": "Done", "failed": "Failed", "unknown": "Unknown", "skipped": "Skipped"}
   },

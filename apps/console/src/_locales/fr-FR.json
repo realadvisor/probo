@@ -4421,6 +4421,13 @@
     }
   },
   "rightsRequestPlan": {
+    "outcome": {
+      "planned": "En attente d'approbation",
+      "approved": "Approuvé, en cours",
+      "done": "Exécuté",
+      "blocked": "Bloqué : une personne doit intervenir",
+      "manual": "À traiter à la main"
+    },
     "status": {
       "planned": "Planifié",
       "approved": "Approuvé",

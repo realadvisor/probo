@@ -65,7 +65,7 @@ import {
   useUpdateRightsRequest,
 } from "../../../hooks/graph/RightsRequestGraph";
 
-import { PlanStatusBadge, PlanStepMark } from "./_components/PlanStatus";
+import { PlanOutcome, PlanStepMark } from "./_components/PlanStatus";
 import { markdownHardBreaks } from "./_lib/markdownHardBreaks";
 import { canApprovePlan, parsePlan, stripPlanLines } from "./_lib/rightsRequestPlan";
 
@@ -336,7 +336,6 @@ export default function RightsRequestDetailsPage(props: Props) {
                       <span className="font-semibold">
                         {t("rightsRequestDetailsPage.plan.title")}
                       </span>
-                      <PlanStatusBadge status={plan.status} />
                       {plan.needsHuman && (
                         <Badge variant="warning">
                           <IconWarning size={12} />
@@ -361,7 +360,7 @@ export default function RightsRequestDetailsPage(props: Props) {
                       </p>
                     )}
                   </div>
-                  {canApprove && (
+                  {canApprove ? (
                     <Button
                       type="button"
                       variant="primary"
@@ -373,6 +372,8 @@ export default function RightsRequestDetailsPage(props: Props) {
                         ? t("rightsRequestDetailsPage.plan.approving")
                         : t("rightsRequestDetailsPage.plan.approve")}
                     </Button>
+                  ) : (
+                    <PlanOutcome status={plan.status} />
                   )}
                 </div>
                 {plan.steps.length > 0 && (
