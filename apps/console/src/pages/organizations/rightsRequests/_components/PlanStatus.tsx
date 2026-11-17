@@ -18,10 +18,23 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Badge } from "@probo/ui";
+import {
+  Badge,
+  IconCircleCheck1,
+  IconCircleProgress,
+  IconCircleQuestionmark,
+  IconCircleSlashes,
+  IconCircleX,
+  IconClock,
+  IconRadioUnchecked,
+  IconWarning,
+} from "@probo/ui";
+import type { FC } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { PlanStatus, PlanStepStatus } from "../_lib/rightsRequestPlan";
+
+type IconComponent = FC<{ size?: number; className?: string }>;
 
 const STATUS_VARIANT: Record<PlanStatus, "neutral" | "info" | "success" | "danger" | "warning"> = {
   planned: "neutral",
@@ -41,13 +54,13 @@ export function PlanStatusBadge({ status, className }: { status: PlanStatus; cla
   );
 }
 
-const OUTCOME_GLYPH: Record<PlanStatus, string> = {
-  planned: "○",
-  approved: "…",
-  waiting: "⏳",
-  done: "✓",
-  blocked: "✕",
-  manual: "!",
+const OUTCOME_ICON: Record<PlanStatus, IconComponent> = {
+  planned: IconRadioUnchecked,
+  approved: IconCircleProgress,
+  waiting: IconClock,
+  done: IconCircleCheck1,
+  blocked: IconCircleX,
+  manual: IconWarning,
 };
 
 // What became of the plan, shown where the Approve button was: once a plan
@@ -58,37 +71,32 @@ const OUTCOME_GLYPH: Record<PlanStatus, string> = {
 export function PlanOutcome({ status, requestState }: { status: PlanStatus; requestState: string }) {
   const { t } = useTranslation();
   const queued = status === "planned" && requestState !== "TODO";
+  const Icon = queued ? OUTCOME_ICON.approved : OUTCOME_ICON[status];
   return (
     <Badge variant={queued ? "info" : STATUS_VARIANT[status]} size="md" className="shrink-0">
-      <span aria-hidden="true" className="font-mono">
-        {queued ? OUTCOME_GLYPH.approved : OUTCOME_GLYPH[status]}
-      </span>
+      <Icon size={14} className="shrink-0" />
       {t(`rightsRequestPlan.outcome.${queued ? "queued" : status}`)}
     </Badge>
   );
 }
 
-const STEP_MARK: Record<PlanStepStatus, { glyph: string; className: string }> = {
-  pending: { glyph: "○", className: "text-txt-tertiary" },
-  done: { glyph: "✓", className: "text-txt-success" },
-  failed: { glyph: "✕", className: "text-txt-danger" },
-  unknown: { glyph: "?", className: "text-txt-warning" },
-  skipped: { glyph: "–", className: "text-txt-tertiary" },
+const STEP_MARK: Record<PlanStepStatus, { icon: IconComponent; className: string }> = {
+  pending: { icon: IconRadioUnchecked, className: "text-txt-tertiary" },
+  done: { icon: IconCircleCheck1, className: "text-txt-success" },
+  failed: { icon: IconCircleX, className: "text-txt-danger" },
+  unknown: { icon: IconCircleQuestionmark, className: "text-txt-warning" },
+  skipped: { icon: IconCircleSlashes, className: "text-txt-tertiary" },
 };
 
-// A fixed-width glyph in front of a step's system name, read out as the
-// status for screen readers.
+// A status icon in front of a step's system name, read out as the status
+// for screen readers.
 export function PlanStepMark({ status }: { status: PlanStepStatus }) {
   const { t } = useTranslation();
-  const mark = STEP_MARK[status];
+  const { icon: Icon, className } = STEP_MARK[status];
+  const label = t(`rightsRequestPlan.stepStatus.${status}`);
   return (
-    <span
-      role="img"
-      aria-label={t(`rightsRequestPlan.stepStatus.${status}`)}
-      title={t(`rightsRequestPlan.stepStatus.${status}`)}
-      className={`inline-block w-4 shrink-0 text-center font-mono ${mark.className}`}
-    >
-      {mark.glyph}
+    <span role="img" aria-label={label} title={label} className={`mt-0.5 shrink-0 ${className}`}>
+      <Icon size={16} />
     </span>
   );
 }
