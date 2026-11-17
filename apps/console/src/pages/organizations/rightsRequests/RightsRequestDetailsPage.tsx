@@ -1,4 +1,4 @@
-// Copyright (c) 2025-2026 Probo Inc <hello@probo.com>.
+// Copyright (c) 2026 Probo Inc <hello@probo.com>.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@ import {
   type GraphQLError,
   toDateInput,
 } from "@probo/helpers";
-import { dateFormat } from "@probo/i18n";
+import { usePageTitle } from "@probo/hooks";
 import {
   ActionDropdown,
   Badge,
@@ -33,18 +33,14 @@ import {
   Card,
   DropdownItem,
   Field,
-  IconCircleCheck1,
-  IconWarning,
+  IconTrashCan,
   Input,
-  Label,
-  Markdown,
   Option,
   Select,
-  Textarea,
 } from "@probo/ui";
 import useToast from "@probo/ui/src/v2/Toaster/useToast";
-import { type ReactNode, useState } from "react";
-import { Controller, type UseFormRegisterReturn } from "react-hook-form";
+import { useState } from "react";
+import { Controller } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import {
   ConnectionHandler,
@@ -55,7 +51,6 @@ import {
 import type { RightsRequestGraphNodeQuery } from "#/__generated__/core/RightsRequestGraphNodeQuery.graphql";
 import { useFormWithSchema } from "#/hooks/useFormWithSchema";
 import { useOrganizationId } from "#/hooks/useOrganizationId";
-import { consoleMarkdownImageOrigins } from "#/lib/markdownImageOrigins";
 import { z } from "#/lib/zod";
 
 import {
@@ -65,13 +60,17 @@ import {
   useUpdateRightsRequest,
 } from "../../../hooks/graph/RightsRequestGraph";
 
-import { PlanOutcome, PlanStepMark } from "./_components/PlanStatus";
-import { markdownHardBreaks } from "./_lib/markdownHardBreaks";
+import { MarkdownField } from "./_components/MarkdownField";
+import { PlanCard } from "./_components/PlanCard";
 import { appendFeedback, canApprovePlan, feedbackNotes, parsePlan, stripPlanLines } from "./_lib/rightsRequestPlan";
+import { rightsRequestDetailsPage } from "./variants";
+
+const typeOptions = ["ACCESS", "DELETION", "RECTIFICATION", "PORTABILITY", "OBJECTION", "COMPLAINT"] as const;
+const stateOptions = ["TODO", "IN_PROGRESS", "DONE", "REJECTED"] as const;
 
 const updateRequestSchema = z.object({
-  requestType: z.enum(["ACCESS", "DELETION", "RECTIFICATION", "PORTABILITY", "OBJECTION", "COMPLAINT"]),
-  requestState: z.enum(["TODO", "IN_PROGRESS", "DONE", "REJECTED"]),
+  requestType: z.enum(typeOptions),
+  requestState: z.enum(stateOptions),
   dataSubject: z.string().optional(),
   contact: z.string().optional(),
   details: z.string().optional(),
@@ -89,9 +88,22 @@ export default function RightsRequestDetailsPage(props: Props) {
     props.queryRef,
   );
   const request = data.node;
-  const { i18n, t } = useTranslation();
+  const { t } = useTranslation();
   const toast = useToast();
   const organizationId = useOrganizationId();
+  const { root, header, intro, heading, title, subtitle, form, grid, footer }
+    = rightsRequestDetailsPage();
+
+  const requestType = request.requestType || "ACCESS";
+  const requestState = request.requestState || "TODO";
+  const typeLabel = t(`rightsRequestDetailsPage.types.${requestType.toLowerCase()}`);
+  const stateLabel = t(`rightsRequestDetailsPage.states.${requestState.toLowerCase()}`);
+  const dataSubject = request.dataSubject?.trim() || "";
+  const contact = request.contact?.trim() || "";
+  const pageTitle = dataSubject || typeLabel;
+  const disabled = !request.canUpdate;
+
+  usePageTitle(pageTitle);
 
   const updateRequest = useUpdateRightsRequest();
 
@@ -109,8 +121,8 @@ export default function RightsRequestDetailsPage(props: Props) {
     updateRequestSchema,
     {
       defaultValues: {
-        requestType: request.requestType || "ACCESS",
-        requestState: request.requestState || "TODO",
+        requestType,
+        requestState,
         dataSubject: request.dataSubject || "",
         contact: request.contact || "",
         details: request.details || "",
@@ -154,8 +166,7 @@ export default function RightsRequestDetailsPage(props: Props) {
   // editing the text does not make the Approve button flicker.
   const plan = parsePlan(request.actionTaken);
   const [isApproving, setIsApproving] = useState(false);
-  const canApprove
-    = request.canUpdate && canApprovePlan(request.requestState ?? "TODO", plan);
+  const canApprove = request.canUpdate === true && canApprovePlan(requestState, plan);
 
   // Approve only moves the state to IN_PROGRESS; other unsaved edits in the
   // form are left alone and still need an explicit save.
@@ -190,7 +201,7 @@ export default function RightsRequestDetailsPage(props: Props) {
   const [feedback, setFeedback] = useState("");
   const [isSendingFeedback, setIsSendingFeedback] = useState(false);
   const canGiveFeedback
-    = request.canUpdate && request.requestState !== "DONE" && request.requestState !== "REJECTED";
+    = request.canUpdate === true && requestState !== "DONE" && requestState !== "REJECTED";
 
   const handleFeedback = async () => {
     const text = feedback.trim();
@@ -226,362 +237,154 @@ export default function RightsRequestDetailsPage(props: Props) {
   const detailsDraft = watch("details") ?? "";
   const actionTakenDraft = watch("actionTaken") ?? "";
 
-  const typeOptions = ["ACCESS", "DELETION", "RECTIFICATION", "PORTABILITY", "OBJECTION", "COMPLAINT"] as const;
-  const stateOptions = ["TODO", "IN_PROGRESS", "DONE", "REJECTED"] as const;
-
   return (
-    <div className="space-y-6">
-      {request.canDelete && (
-        <div className="flex items-center justify-end">
+    <div className={root()}>
+      <div className={header()}>
+        <div className={intro()}>
+          <div className={heading()}>
+            <h1 className={title()}>{pageTitle}</h1>
+            {dataSubject && <Badge variant="neutral">{typeLabel}</Badge>}
+            <Badge variant={getRightsRequestStateVariant(requestState)}>
+              {stateLabel}
+            </Badge>
+          </div>
+          {contact && <p className={subtitle()}>{contact}</p>}
+        </div>
+        {request.canDelete && (
           <ActionDropdown>
-            <DropdownItem onClick={deleteRequest} variant="danger">
+            <DropdownItem icon={IconTrashCan} variant="danger" onClick={deleteRequest}>
               {t("rightsRequestDetailsPage.actions.delete")}
             </DropdownItem>
           </ActionDropdown>
-        </div>
-      )}
+        )}
+      </div>
 
-      <Card>
-        <div className="p-6">
-          <div className="mb-6">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold">
-                {t(`rightsRequestDetailsPage.types.${(request.requestType || "ACCESS").toLowerCase()}`)}
-              </h1>
-              <Badge variant="neutral">
-                {t(`rightsRequestDetailsPage.types.${(request.requestType || "ACCESS").toLowerCase()}`)}
-              </Badge>
-              <Badge
-                variant={getRightsRequestStateVariant(
-                  request.requestState || "TODO",
-                )}
-              >
-                {t(`rightsRequestDetailsPage.states.${(request.requestState || "TODO").toLowerCase()}`)}
-              </Badge>
-            </div>
-          </div>
-
-          <form onSubmit={e => void onSubmit(e)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+      <Card padded>
+        <form onSubmit={e => void onSubmit(e)} className={form()}>
+          <div className={grid()}>
+            <Field
+              label={t("rightsRequestDetailsPage.fields.requestType")}
+              error={formState.errors.requestType?.message}
+            >
               <Controller
                 control={control}
                 name="requestType"
                 render={({ field }) => (
-                  <div>
-                    <Label>
-                      {t("rightsRequestDetailsPage.fields.requestType")}
-                      {" "}
-                      *
-                    </Label>
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                    >
-                      {typeOptions.map(option => (
-                        <Option
-                          key={option}
-                          value={option}
-                        >
-                          {t(`rightsRequestDetailsPage.types.${option.toLowerCase()}`)}
-                        </Option>
-                      ))}
-                    </Select>
-                    {formState.errors.requestType
-                      ?.message && (
-                      <div className="text-red-500 text-sm mt-1">
-                        {
-                          formState.errors.requestType
-                            .message
-                        }
-                      </div>
-                    )}
-                  </div>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    className="w-full"
+                    disabled={disabled}
+                  >
+                    {typeOptions.map(option => (
+                      <Option key={option} value={option}>
+                        {t(`rightsRequestDetailsPage.types.${option.toLowerCase()}`)}
+                      </Option>
+                    ))}
+                  </Select>
                 )}
               />
+            </Field>
 
+            <Field
+              label={t("rightsRequestDetailsPage.fields.state")}
+              error={formState.errors.requestState?.message}
+            >
               <Controller
                 control={control}
                 name="requestState"
                 render={({ field }) => (
-                  <div>
-                    <Label>
-                      {t("rightsRequestDetailsPage.fields.state")}
-                      {" "}
-                      *
-                    </Label>
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                    >
-                      {stateOptions.map(option => (
-                        <Option
-                          key={option}
-                          value={option}
-                        >
-                          {t(`rightsRequestDetailsPage.states.${option.toLowerCase()}`)}
-                        </Option>
-                      ))}
-                    </Select>
-                    {formState.errors.requestState
-                      ?.message && (
-                      <div className="text-red-500 text-sm mt-1">
-                        {
-                          formState.errors
-                            .requestState.message
-                        }
-                      </div>
-                    )}
-                  </div>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    className="w-full"
+                    disabled={disabled}
+                  >
+                    {stateOptions.map(option => (
+                      <Option key={option} value={option}>
+                        {t(`rightsRequestDetailsPage.states.${option.toLowerCase()}`)}
+                      </Option>
+                    ))}
+                  </Select>
                 )}
               />
-            </div>
+            </Field>
+          </div>
 
+          <div className={grid()}>
             <Field
               label={t("rightsRequestDetailsPage.fields.dataSubject")}
-              {...register("dataSubject")}
               error={formState.errors.dataSubject?.message}
-            />
+            >
+              <Input {...register("dataSubject")} disabled={disabled} />
+            </Field>
 
             <Field
               label={t("rightsRequestDetailsPage.fields.contact")}
-              {...register("contact")}
               error={formState.errors.contact?.message}
+            >
+              <Input {...register("contact")} disabled={disabled} />
+            </Field>
+          </div>
+
+          <div className={grid()}>
+            <Field
+              label={t("rightsRequestDetailsPage.fields.deadline")}
+              error={formState.errors.deadline?.message}
+            >
+              <Input type="date" {...register("deadline")} disabled={disabled} />
+            </Field>
+          </div>
+
+          <MarkdownField
+            label={t("rightsRequestDetailsPage.fields.details")}
+            rendered={detailsDraft}
+            registration={register("details")}
+            placeholder={t("rightsRequestDetailsPage.placeholders.details")}
+            error={formState.errors.details?.message}
+            disabled={disabled}
+          />
+
+          {plan && (
+            <PlanCard
+              plan={plan}
+              requestState={requestState}
+              notes={notes}
+              canApprove={canApprove}
+              isApproving={isApproving || formState.isSubmitting}
+              showApproveHint={formState.isDirty}
+              onApprove={() => void handleApprove()}
+              canGiveFeedback={canGiveFeedback}
+              feedback={feedback}
+              onFeedbackChange={setFeedback}
+              isSendingFeedback={isSendingFeedback}
+              onSendFeedback={() => void handleFeedback()}
             />
+          )}
 
-            <MarkdownField
-              label={t("rightsRequestDetailsPage.fields.details")}
-              rendered={detailsDraft}
-              registration={register("details")}
-              placeholder={t("rightsRequestDetailsPage.placeholders.details")}
-              error={formState.errors.details?.message}
-            />
+          {/* The PLAN and NOTE lines are hidden from the rendered view (the
+              card above shows them) but stay in the textarea and in what
+              gets saved. */}
+          <MarkdownField
+            label={t("rightsRequestDetailsPage.fields.actionTaken")}
+            rendered={stripPlanLines(actionTakenDraft)}
+            registration={register("actionTaken")}
+            placeholder={t("rightsRequestDetailsPage.placeholders.actionTaken")}
+            error={formState.errors.actionTaken?.message}
+            disabled={disabled}
+          />
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>{t("rightsRequestDetailsPage.fields.deadline")}</Label>
-                <Input type="date" {...register("deadline")} />
-                {formState.errors.deadline?.message && (
-                  <div className="text-red-500 text-sm mt-1">
-                    {formState.errors.deadline.message}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {plan && (
-              <div className="rounded-lg border border-border-low bg-subtle p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">
-                        {t("rightsRequestDetailsPage.plan.title")}
-                      </span>
-                      {plan.needsHuman && (
-                        <Badge variant="warning">
-                          <IconWarning size={12} />
-                          {t("rightsRequestDetailsPage.plan.needsHuman")}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-txt-secondary">{plan.summary}</p>
-                    {(plan.approvedBy || plan.approvedAt) && (
-                      <p className="text-xs text-txt-tertiary">
-                        {t("rightsRequestDetailsPage.plan.approvedBy", {
-                          name: plan.approvedBy ?? t("rightsRequestDetailsPage.plan.unknownApprover"),
-                          date: plan.approvedAt ? dateFormat(i18n.language, plan.approvedAt) : "",
-                        })}
-                      </p>
-                    )}
-                    {plan.completedAt && (
-                      <p className="text-xs text-txt-tertiary">
-                        {t("rightsRequestDetailsPage.plan.completedAt", {
-                          date: dateFormat(i18n.language, plan.completedAt),
-                        })}
-                      </p>
-                    )}
-                  </div>
-                  {canApprove ? (
-                    <Button
-                      type="button"
-                      variant="primary"
-                      icon={IconCircleCheck1}
-                      disabled={isApproving || formState.isSubmitting}
-                      onClick={() => void handleApprove()}
-                    >
-                      {isApproving
-                        ? t("rightsRequestDetailsPage.plan.approving")
-                        : t("rightsRequestDetailsPage.plan.approve")}
-                    </Button>
-                  ) : (
-                    <PlanOutcome
-                      status={plan.status}
-                      requestState={request.requestState ?? "TODO"}
-                    />
-                  )}
-                </div>
-                {plan.steps.length > 0 && (
-                  <ul className="space-y-1 text-sm">
-                    {plan.steps.map((step, index) => (
-                      <li key={index} className="flex gap-2">
-                        <PlanStepMark status={step.status} />
-                        <span className="shrink-0 font-medium">{step.system}</span>
-                        <span className="text-txt-tertiary">—</span>
-                        <span className="text-txt-secondary">
-                          {step.action}
-                          {step.detail && (
-                            <span className="text-txt-tertiary">
-                              {" · "}
-                              {step.detail}
-                            </span>
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {plan.note && (
-                  <div className="text-sm text-txt-secondary prose prose-sm max-w-none [&_.prose]:max-w-none [&_.prose]:text-inherit">
-                    <Markdown
-                      content={plan.note}
-                      allowedImageOrigins={consoleMarkdownImageOrigins()}
-                    />
-                  </div>
-                )}
-                {canApprove && formState.isDirty && (
-                  <p className="text-xs text-txt-tertiary">
-                    {t("rightsRequestDetailsPage.plan.approveHint")}
-                  </p>
-                )}
-                {notes.length > 0 && (
-                  <div className="text-sm">
-                    <p className="font-medium">{t("rightsRequestDetailsPage.plan.feedbackGiven")}</p>
-                    <ul className="list-disc pl-5 text-txt-secondary">
-                      {notes.map((note, index) => (
-                        <li key={index}>{note}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {canGiveFeedback && (
-                  <div className="space-y-2 border-t border-border-low pt-3">
-                    <Label>{t("rightsRequestDetailsPage.plan.feedbackLabel")}</Label>
-                    <Textarea
-                      value={feedback}
-                      onChange={e => setFeedback(e.target.value)}
-                      placeholder={t("rightsRequestDetailsPage.plan.feedbackPlaceholder")}
-                      rows={2}
-                    />
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="tertiary"
-                        disabled={isSendingFeedback}
-                        onClick={() => setFeedback(t("rightsRequestDetailsPage.plan.handOverText"))}
-                      >
-                        {t("rightsRequestDetailsPage.plan.handOver")}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={isSendingFeedback || feedback.trim() === ""}
-                        onClick={() => void handleFeedback()}
-                      >
-                        {isSendingFeedback
-                          ? t("rightsRequestDetailsPage.plan.feedbackSending")
-                          : t("rightsRequestDetailsPage.plan.feedbackSend")}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* The PLAN line is hidden from the rendered view (the card above
-                shows it) but stays in the textarea and in what gets saved. */}
-            <MarkdownField
-              label={t("rightsRequestDetailsPage.fields.actionTaken")}
-              rendered={stripPlanLines(actionTakenDraft)}
-              registration={register("actionTaken")}
-              placeholder={t("rightsRequestDetailsPage.placeholders.actionTaken")}
-              error={formState.errors.actionTaken?.message}
-            />
-
-            <div className="flex justify-end pt-4">
-              {request.canUpdate && (
-                <Button
-                  type="submit"
-                  variant="primary"
-                  disabled={formState.isSubmitting}
-                >
-                  {formState.isSubmitting
-                    ? t("rightsRequestDetailsPage.actions.saving")
-                    : t("rightsRequestDetailsPage.actions.save")}
-                </Button>
-              )}
-            </div>
-          </form>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-// A textarea with a rendered Markdown view. View mode is the default; the
-// textarea only mounts in edit mode but the field stays registered through
-// react-hook-form, so saving is unchanged.
-function MarkdownField({
-  label,
-  rendered,
-  registration,
-  placeholder,
-  error,
-}: {
-  label: ReactNode;
-  rendered: string;
-  registration: UseFormRegisterReturn;
-  placeholder: string;
-  error?: string;
-}) {
-  const { t } = useTranslation();
-  const [isEditing, setIsEditing] = useState(false);
-
-  return (
-    <div>
-      <div className="flex items-center justify-between">
-        <Label>{label}</Label>
-        <Button
-          type="button"
-          variant="tertiary"
-          onClick={() => setIsEditing(editing => !editing)}
-        >
-          {isEditing
-            ? t("rightsRequestDetailsPage.markdown.preview")
-            : t("rightsRequestDetailsPage.markdown.edit")}
-        </Button>
-      </div>
-      {isEditing
-        ? (
-            <Textarea {...registration} placeholder={placeholder} rows={6} />
-          )
-        : (
-            <div className="rounded-lg border border-border-low px-3 py-2 text-sm min-h-10">
-              {rendered.trim() === ""
-                ? (
-                    <span className="text-txt-tertiary">
-                      {t("rightsRequestDetailsPage.markdown.empty")}
-                    </span>
-                  )
-                : (
-                    <div className="prose prose-sm max-w-none [&_.prose]:max-w-none">
-                      <Markdown
-                        content={markdownHardBreaks(rendered)}
-                        allowedImageOrigins={consoleMarkdownImageOrigins()}
-                      />
-                    </div>
-                  )}
+          {request.canUpdate && (
+            <div className={footer()}>
+              <Button type="submit" disabled={formState.isSubmitting}>
+                {formState.isSubmitting
+                  ? t("rightsRequestDetailsPage.actions.saving")
+                  : t("rightsRequestDetailsPage.actions.save")}
+              </Button>
             </div>
           )}
-      {error && <div className="text-red-500 text-sm mt-1">{error}</div>}
+        </form>
+      </Card>
     </div>
   );
 }
